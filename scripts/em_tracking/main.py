@@ -4,6 +4,8 @@ from pylab import get_current_fig_manager
 import numpy as np
 import matplotlib
 
+variable = 0
+
 diffx = 0
 diffy = 0
 diffz = 0
@@ -98,7 +100,7 @@ line3, = ax3.plot(y_path, x_path, 'x')
 line33, = ax33.plot(0, 0 , 'o')
 
 
-
+	
 
 while True:
     port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
@@ -112,6 +114,7 @@ while True:
       
       x = x + diffx
       z = z + diffz
+
       y = y + diffy
      
       
