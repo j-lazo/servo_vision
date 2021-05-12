@@ -4,52 +4,33 @@ from general_functions import calibration_functions as cf
 import argparse
 import os
 
+
 def test_camera():
     """
-
+    This function returns video from the first webcam to the computer.
+    The outpus size is fixed to 600 x 300 pixels
     """
     # This will return video from the first webcam on your computer.
     cap = cv2.VideoCapture(0)
-
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
-    save_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
+    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (600, 300))
 
-    img_id = 0000
     while (True):
         # reads frames from a camera
         # ret checks return at each frame
         ret, frame = cap.read()
-        pattern_size = (7, 5)
-        square_size = 0.036
-        # Converts to HSV color space, OCV reads colors as BGR
-        # frame is converted to hsv
-        resized = cv2.resize(frame, (300, 300))
-        gray = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-        found, corners = cf.find_corners(gray, pattern_size)
-        draw_img = cf.draw_corners(gray, corners, pattern_size)
-
         # The original input frame is shown in the window
-        cv2.imshow('Original', draw_img)
-
+        cv2.imshow('Original', frame)
         # Wait for 'a' key to stop the program
         key = cv2.waitKey(1) & 0xFF
-        if key == ord('s'):
-            img_name = 'calibration_img_' + str(img_id).zfill(4) + '.png'
-            print(img_name)
-            cv2.imwrite(save_dir + img_name, resized)
-            img_id = img_id + 1
-
         if key == ord('q'):
             break
 
     # Close the window / Release webcam
     cap.release()
-
     # After we release our webcam, we also release the output
     out.release()
-
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
@@ -135,7 +116,6 @@ if __name__ == "__main__":
         test_camera()
     else:
         calibrate_camera(args.save_dir, args.pattern_size, args.square_size)
-
 
 """    # Create model
     if args.command == "train":
