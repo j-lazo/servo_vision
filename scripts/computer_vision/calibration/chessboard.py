@@ -4,7 +4,7 @@ import os
 
 
 pattern_size = (7,5)
-square_size = 0.367
+square_size = 3.67
 
 pattern_points = numpy.zeros( (numpy.prod(pattern_size), 3), numpy.float32 )
 pattern_points[:, :2] = numpy.indices(pattern_size).T.reshape(-1, 2)
