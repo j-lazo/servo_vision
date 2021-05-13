@@ -3,7 +3,10 @@ import cv2
 from general_functions import calibration_functions as cf
 import argparse
 import os
+from computer_vision import calibration
 
+def hand_eye_calibration(dir_data):
+    run_calibration(dir_data)
 
 def test_camera():
     """
@@ -34,8 +37,10 @@ def test_camera():
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
+def acquire_data_hande_eye_calibration(save_dir, pattern_size, square_size):
+    return 0
 
-def calibrate_camera(save_dir, pattern_size, square_size):
+def acquire_data_camera_calibration(save_dir, pattern_size, square_size):
     pattern_size = (7, 5)
     square_size = 0.036
 
@@ -105,6 +110,8 @@ if __name__ == "__main__":
     if args.command != "test_camera":
         assert args.pattern_size, "Argument --pattern_size is required for camera " \
                              "calibration and eye-hand calibration"
+        assert args.square_size, "Provide --square_size is required for camera " \
+                             "calibration and eye-hand calibration"
     elif args.command == "detect":
         assert args.square_size, "Provide --square_size is required for camera " \
                              "calibration and eye-hand calibration"
@@ -114,8 +121,15 @@ if __name__ == "__main__":
     # Configurations
     if args.command == "test_camera":
         test_camera()
-    else:
+    elif args.command == "acquire_data_camera_calibration":
         calibrate_camera(args.save_dir, args.pattern_size, args.square_size)
+
+    elif args.command == "acquire_data_hande_eye_calibration":
+        calibrate_camera(args.save_dir, args.pattern_size, args.square_size)
+    
+    elif args.command == 'hand_eye_calibration'
+         hand_eye_calibration(dir_data):
+         
 
 """    # Create model
     if args.command == "train":
