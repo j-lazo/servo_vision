@@ -3,7 +3,13 @@ import numpy as np
 import cv2
 import tensorflow as tf
 
-def load_data(path):
+
+def load_data(path, image_modality):
+    """
+    @param path: path of the directory with images and masks
+    @return: tupple of the
+
+    """
     print(path)
     path_images = ''.join([path, 'image/', image_modality, "/*"])
     path_labels = ''.join([path, "label/*"])
@@ -15,7 +21,9 @@ def load_data(path):
     print('total size labels:', total_size_labels, path_labels)
     return (images, masks)
 
+
 def load_data_only_imgs(path):
+
     print(path)
     path_images = ''.join([path, "/*"])
     images = sorted(glob(path_images))
@@ -25,6 +33,7 @@ def load_data_only_imgs(path):
 
 
 def read_image_test(path):
+
     x = cv2.imread(path, cv2.IMREAD_COLOR)
     x = cv2.resize(x, (256, 256))
     x = x / 255.0
