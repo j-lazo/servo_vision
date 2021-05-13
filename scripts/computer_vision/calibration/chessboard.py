@@ -1,42 +1,44 @@
 import numpy
 import cv2
-from matplotlib import pyplot as plt
+import os
+
 
 pattern_size = (7,5)
 square_size = 3.67
 
 pattern_points = numpy.zeros( (numpy.prod(pattern_size), 3), numpy.float32 )
-pattern_points[:,:2] = numpy.indices(pattern_size).T.reshape(-1, 2)
+pattern_points[:, :2] = numpy.indices(pattern_size).T.reshape(-1, 2)
 pattern_points *= square_size
 
-dir_imgs = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/image_list/'
 
-def find_corners(image):  
-    	
+def find_corners(image):
     found, corners = cv2.findChessboardCorners(image, pattern_size)
     term = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT, 30, 0.1)
     if found:
         cv2.cornerSubPix(image, corners, (5, 5), (-1, -1), term)
     return found, corners
 
+
 def draw_corners(image, corners):
     color_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     cv2.drawChessboardCorners(color_image, pattern_size, corners, True)
     return color_image
 
+
 def get_object_pose(object_points, image_points, camera_matrix, dist_coeffs):
     ret, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
     return rvec.flatten(), tvec.flatten()
 
-def calibrate_lens(image_list):
-    img_points, obj_points = [], []
-    h,w = 0, 0
-    for image_name in image_list:
 
+def calibrate_lens(dir_imgs):
+    img_list = sorted(os.listdir(dir_imgs))
+    img_points, obj_points = [], []
+    h, w = 0, 0
+    for image_name in img_list:
         img = cv2.imread(dir_imgs + image_name)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         h, w = img.shape[:2]
-        found,corners = find_corners(img)
+        found, corners = find_corners(img)
 
         if not found:
             raise Exception("chessboard calibrate_lens Failed to find corners in img")
