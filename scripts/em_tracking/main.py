@@ -25,6 +25,8 @@ x_path = -path[:,0] #left -x. righy x
 z_path = path[:,1] 
 y_path = path[:,2] 
 y_path = -y_path
+print(t)
+
 
 fig1 = plt.figure(1)
 ax1 = fig1.add_subplot(111)
