@@ -1,9 +1,9 @@
 import numpy
 import cv2
 import os
+import numpy as np
 
-
-pattern_size = (7,5)
+pattern_size = (7, 5)
 square_size = 3.67
 
 pattern_points = numpy.zeros( (numpy.prod(pattern_size), 3), numpy.float32 )
@@ -35,8 +35,9 @@ def calibrate_lens(dir_imgs):
     img_points, obj_points = [], []
     h, w = 0, 0
     for image_name in img_list:
-        img = cv2.imread(dir_imgs + image_name)
+        img = cv2.imread(os.path.join(dir_imgs, image_name))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        #img = cv2.rotate(img, cv2.ROTATE_180)
         h, w = img.shape[:2]
         found, corners = find_corners(img)
 

@@ -42,14 +42,14 @@ def main(data_dir):
     obj_pose_list = []
 
     dir_imgs = os.path.join(data_dir, 'image_list')
-    dir_poses = os.path.join(data_dir + 'pos_list')
+    dir_poses = os.path.join(data_dir, 'pos_list')
 
     img_list = sorted(os.listdir(dir_imgs))
     rob_pose_list = sorted(os.listdir(dir_poses))
     camera_matrix, dist_coeffs = chessboard.calibrate_lens(dir_imgs)
 
     for i, img in enumerate(img_list):
-        image = cv2.imread(dir_imgs + img)
+        image = cv2.imread(''.join([dir_imgs, '/', img]))
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         found, corners = chessboard.find_corners(gray)
         corner_list.append(corners)
@@ -61,8 +61,8 @@ def main(data_dir):
 
     A, B = [], []
     for i in range(len(rob_pose_list)-1):
-        pose_1 = read_text_file(dir_poses + rob_pose_list[i])
-        pose_2 = read_text_file(dir_poses + rob_pose_list[i+1])
+        pose_1 = read_text_file(dir_poses + '/' + rob_pose_list[i])
+        pose_2 = read_text_file(dir_poses + '/' + rob_pose_list[i+1])
         p = pose_1, obj_pose_list[i]
         n = pose_2, obj_pose_list[i+1]
         A.append(dot(inv(p[0]), n[0]))
@@ -80,14 +80,14 @@ def main(data_dir):
     print("For validation. Printing transformations from the robot base to the camera")
     print("All the transformations should be quite similar")
 
-    for i in range(len(img_list)):
-        rob = read_text_file(dir_poses + rob_pose_list[i])
+    for i in range(len(img_list) - 1):
+        rob = read_text_file(os.path.join(dir_poses, rob_pose_list[i]))
         obj = obj_pose_list[i]
         tmp = dot(rob, dot(X, inv(obj)))
         print(tmp)
 
     # Here just one is picked but maybe some average can be used instead
-    rob = read_text_file(dir_poses + rob_pose_list[0])
+    rob = read_text_file(os.path.join(dir_poses, rob_pose_list[0]))
     obj = obj_pose_list[0]
     cam_pose = dot(dot(rob, X), inv(obj))
 
