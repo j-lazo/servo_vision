@@ -1,13 +1,18 @@
 from sksurgerynditracker.nditracker import NDITracker
+import os
+print(os.getcwd())
+
 SETTINGS = {
     "tracker type": "aurora",
-    "romfiles":['/home/nearlab/Jorge/current_work/robot_vision/scripts/em_tracking/080082.rom']
+    "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
         }
 TRACKER = NDITracker(SETTINGS)
 
 TRACKER.start_tracking()
 port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
+print(port_handles, timestamps, framenumbers, tracking, quality)
 for t in tracking:
-  print (t)
+  print(t)
+
 TRACKER.stop_tracking()
 TRACKER.close()

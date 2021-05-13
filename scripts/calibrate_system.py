@@ -37,12 +37,10 @@ def test_camera():
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
-def acquire_data_hande_eye_calibration(save_dir, pattern_size, square_size):
+def acquire_data_hande_eye_calibration(save_dir):
     return 0
 
-def acquire_data_camera_calibration(save_dir, pattern_size, square_size):
-    pattern_size = (7, 5)
-    square_size = 0.036
+def acquire_data_camera_calibration(save_dir):
 
     # This will return video from the first webcam on your computer.
     cap = cv2.VideoCapture(0)
@@ -50,8 +48,8 @@ def acquire_data_camera_calibration(save_dir, pattern_size, square_size):
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
-    save_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
-
+    #save_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
+    save_imgs_dir = save_dir
     img_id = 0000
     while (True):
         # reads frames from a camera
@@ -74,9 +72,8 @@ def acquire_data_camera_calibration(save_dir, pattern_size, square_size):
         if key == ord('s'):
             img_name = 'calibration_img_' + str(img_id).zfill(4) + '.png'
             print(img_name)
-            cv2.imwrite(save_dir + img_name, gray)
+            cv2.imwrite(os.path.join(save_imgs_dir, img_name), gray)
             img_id = img_id + 1
-
         if key == ord('q'):
             break
 
@@ -122,13 +119,13 @@ if __name__ == "__main__":
     if args.command == "test_camera":
         test_camera()
     elif args.command == "acquire_data_camera_calibration":
-        calibrate_camera(args.save_dir, args.pattern_size, args.square_size)
+        acquire_data_camera_calibration(args.save_dir)
 
     elif args.command == "acquire_data_hande_eye_calibration":
-        calibrate_camera(args.save_dir, args.pattern_size, args.square_size)
+        acquire_data_camera_calibration(args.save_dir, args.pattern_size, args.square_size)
     
-    elif args.command == 'hand_eye_calibration'
-         hand_eye_calibration(dir_data):
+    elif args.command == 'hand_eye_calibration':
+        acquire_data_camera_calibration(args.save_dir, args.pattern_size, args.square_size)
          
 
 """    # Create model
