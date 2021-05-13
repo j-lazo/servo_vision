@@ -38,7 +38,7 @@ def calibrate_lens(dir_imgs):
         img = cv2.imread(dir_imgs + image_name)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         h, w = img.shape[:2]
-        found,corners = find_corners(img)
+        found, corners = find_corners(img)
 
         if not found:
             raise Exception("chessboard calibrate_lens Failed to find corners in img")
