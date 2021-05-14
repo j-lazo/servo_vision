@@ -54,11 +54,7 @@ def test_camera():
         print('Cannot open camera')
         exit()
 
-    # Define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (600, 300))
-
-    while (True):
+    while True:
         # reads frames from a camera
         # ret checks return at each frame
         ret, frame = cap.read()
@@ -75,8 +71,6 @@ def test_camera():
 
     # Close the window / Release webcam
     cap.release()
-    # After we release our webcam, we also release the output
-    out.release()
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
@@ -167,8 +161,7 @@ def acquire_data_camera_calibration(save_dir):
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
 
         pattern_size = (7, 5)
-        # Converts to HSV color space, OCV reads colors as BGR
-        # frame is converted to hsv
+        # Converts to grayscale color space
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         found, corners = cf.find_corners(gray, pattern_size)
         draw_img = cf.draw_corners(gray, corners, pattern_size)

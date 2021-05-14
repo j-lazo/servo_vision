@@ -4,6 +4,7 @@ import numpy as np
 import os
 from control import pySerial_request as pysr
 
+
 def main():
     # Settings for the em tracking sensor
     SETTINGS={
@@ -15,8 +16,8 @@ def main():
     # Setting up the video recording settings for the camera
     cap = cv2.VideoCapture(0)
     # Define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
+    #fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    #out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
 
     while True:
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
@@ -39,7 +40,6 @@ def main():
         resized = cv2.resize(frame, (500, 300))
         # The original input frame is shown in the window
         cv2.imshow('Output Camera', resized)
-
         # Wait for 'a' key to stop the program
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
@@ -54,7 +54,7 @@ def main():
     # Close the window / Release webcam
     cap.release()
     # After we release our webcam, we also release the output
-    out.release()
+    #out.release()
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
