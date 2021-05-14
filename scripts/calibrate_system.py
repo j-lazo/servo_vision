@@ -218,7 +218,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     # Validate arguments
-    if args.command != "test_camera":
+    if args.command == "acquire_data_camera_calibration":
         assert args.pattern_size, "Argument --pattern_size is required for camera " \
                              "calibration and eye-hand calibration"
 
