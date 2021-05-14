@@ -2,7 +2,7 @@ import cv2
 from sksurgerynditracker.nditracker import NDITracker
 import numpy as np
 import os
-
+from control import pySerial_request
 
 def main():
     # Settings for the em tracking sensor
@@ -29,7 +29,8 @@ def main():
         # reads frames from a camera
         # ret checks return at each frame
         ret, frame = cap.read()
-        # read serial
+        # read serial to obtain current states of actuation joint variables
+        motor_encoders = request_encoder_value()  # motor_encoders contains is a list contain the current encoder value
         # frame is converted to hsv
         resized = cv2.resize(frame, (500, 300))
         # The original input frame is shown in the window
@@ -39,6 +40,9 @@ def main():
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
+
+        # send serial for new set points for PID controller
+
 
     # stop tracking
     TRACKER.stop_tracking()
