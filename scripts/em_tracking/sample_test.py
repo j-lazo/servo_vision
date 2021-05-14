@@ -6,7 +6,9 @@ def test(tracker):
 
     port_handles, timestamps, framenumbers, tracking, quality = tracker.get_frame()
     for t in tracking:
-        print(t)
+        print('x:', t[0][3],
+              'y:', t[1][3],
+              'z:', t[2][3])
 
 
 def main():
