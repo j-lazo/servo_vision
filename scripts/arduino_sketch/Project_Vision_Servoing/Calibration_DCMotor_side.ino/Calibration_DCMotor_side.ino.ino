@@ -2,6 +2,7 @@
 // Encoder 2 pulse per revolution
 
 String receiveData;
+String abc = "re";
 
 //This is the section for encoder and ISR
 int encoderPin1 = 2; //Encoder Output 'A' must connected with intreput pin of arduino.
@@ -26,7 +27,7 @@ int motor_limit_motion = 800;
 //PID controller setup
 //double kp = 0.8 , ki = 0.0001 , kd = 0.0012;
 //double kp = 0.87 , ki = 0.0002 , kd = 0.0015;
-double kp = 5 , ki = 40 , kd = 0.002;
+double kp = 4.8 , ki = 40 , kd = 0.002;
 
 double input = 0, output = 0, setpoint = 0;
 PID myPID(&input, &output, &setpoint, kp, ki, kd, DIRECT);
@@ -63,29 +64,37 @@ void setup() {
 void loop() {
   //This first section is for receiving data and sending data
   //Receive char(s) from python serial communication
-  Serial.flush();
+//  Serial.flush();
+  delay(8);
   while(Serial.available()){ // only send data back if data has been sent
     delay(3);
     char c = Serial.read(); // read the incoming data
     receiveData += c;
   }
-  if(receiveData.length()>0){ //Verify that the variable contains information
-    int User_Input = receiveData.toInt(); //store the data from serial input in interger type
-//    receiveData = ""; //clear out the store data // put it into pwmOut function.
-    delay(3);
-    REV = map (User_Input, -90, 90, -2400, 2400 ); // mapping degree into pulse
+  if(receiveData == abc){
+    Serial.println(encoderValue);
+    receiveData = "";
+    delay(5);
   }
+  else{
+    if(receiveData.length()>0){ //Verify that the variable contains information
+      int User_Input = receiveData.toInt(); //store the data from serial input in interger type
+      receiveData = ""; //clear out the store data // put it into pwmOut function.
+      delay(3);
+      REV = map (User_Input, -90, 90, -2400, 2400 ); // mapping degree into pulse
+    }
+  }
+
   //This second section is for motor setup
-//  Serial.print("this is REV - "); 
-  Serial.println(encoderValue);
-  if(REV < 2400 && REV > -2400){
-  setpoint = REV;
+  if(REV <= 2400 && REV >= -2400){
+  setpoint = REV;                  // set a new setpoint from python server
   }
   input = encoderValue;
   myPID.Compute();                 // calculate new output
   pwmOut(output);
-    
-  delay(40); // delay for 1/10 of a second
+
+  Serial.flush();
+  delay(10); // delay for 1/100 of a second
 }
 void updateEncoder(){
   int MSB = digitalRead(encoderPin1); //MSB = most significant bit
