@@ -11,9 +11,14 @@ from control import pySerial_request as pysr
 
 def test_actuators():
 
+    arduino_port_1, arduino_port_2, arduino_port_3 = pysr.initialize_ports()
+
     while True:
-        motor_enconders = pysr.request_encoder_value()
-        print(motor_enconders)
+        motor_enconders = pysr.request_encoder_value(arduino_port_1, arduino_port_2, arduino_port_3)
+        encoder_1 = motor_enconders[0]
+        encoder_2 = motor_enconders[1]
+        encoder_3 = motor_enconders[2]
+        print('\r' in ((encoder_1.decode())))
 
 
 def test_sensor():
@@ -75,6 +80,7 @@ def test_camera():
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
+
 def test_all_systems_together():
 
     # Settings for the em tracking sensor
@@ -132,20 +138,35 @@ def test_all_systems_together():
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
+
 def acquire_data_camera_calibration(save_dir):
+
+    # Settings for the em tracking sensor
+    SETTINGS = {
+        "tracker type": "aurora",
+        "romfiles": [os.getcwd() + "/scripts/em_tracking/080082.rom"],
+    }
+    TRACKER = NDITracker(SETTINGS)
+    TRACKER.start_tracking()
 
     # This will return video from the first webcam on your computer.
     cap = cv2.VideoCapture(0)
-    # Define the codec and create VideoWriter object
     #save_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
-    save_imgs_dir = save_dir
+    save_imgs_dir = save_dir + '/image_list/'
+    save_pos_dir = save_dir + '/pos_list/'
     img_id = 0000
-    while (True):
+
+    while True:
         # reads frames from a camera
         # ret checks return at each frame
         ret, frame = cap.read()
+        if not ret:
+            print('Cannot recieve frame (stream end?). Exiting')
+            break
+
+        port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
+
         pattern_size = (7, 5)
-        square_size = 0.036
         # Converts to HSV color space, OCV reads colors as BGR
         # frame is converted to hsv
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -153,18 +174,34 @@ def acquire_data_camera_calibration(save_dir):
         draw_img = cf.draw_corners(gray, corners, pattern_size)
         resized = cv2.resize(draw_img, (450, 300))
         # The original input frame is shown in the window
-        cv2.imshow('Original', resized)
+        cv2.imshow('Output Video', resized)
 
         # Wait for 'a' key to stop the program
         key = cv2.waitKey(1) & 0xFF
         if key == ord('s'):
-            img_name = 'calibration_img_' + str(img_id).zfill(4) + '.png'
+            array_name = ''.join(['calibration_', str(img_id).zfill(4), '.txt'])
+            file_name = os.path.join(save_pos_dir, array_name)
+            print(file_name)
+            for t in tracking:
+                #file_array = open(file_name, 'w')
+                with open(file_name, "w") as txt_file:
+                    txt_file.write(np.array2string(t))
+                print(t)
+
+            img_name = ''.join(['calibration_img_', str(img_id).zfill(4), '.png'])
             print(img_name)
             cv2.imwrite(os.path.join(save_imgs_dir, img_name), gray)
             img_id = img_id + 1
         if key == ord('q'):
             break
 
+    # Close the window / Release webcam
+    cap.release()
+    # De-allocate any associated memory usage
+    cv2.destroyAllWindows()
+    # stop tracking
+    TRACKER.stop_tracking()
+    TRACKER.close()
     # Close the window / Release webcam
     cap.release()
     # De-allocate any associated memory usage
@@ -211,7 +248,6 @@ if __name__ == "__main__":
     elif args.command == 'hand_eye_calibration':
         acquire_data_camera_calibration(args.save_dir)
 
-         
 
 """    # Create model
     if args.command == "train":
