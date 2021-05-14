@@ -4,9 +4,31 @@ from general_functions import calibration_functions as cf
 import argparse
 import os
 from computer_vision import calibration
+from em_tracking import sample_test as emt
+from sksurgerynditracker.nditracker import NDITracker
 
-def hand_eye_calibration(dir_data):
-    run_calibration(dir_data)
+
+def test_sensor():
+    """
+    This function returns the points x, y, z from the EM tracking sensor
+    """
+
+    SETTINGS = {
+        "tracker type": "aurora",
+        "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
+    }
+
+    TRACKER = NDITracker(SETTINGS)
+    TRACKER.start_tracking()
+    while True:
+        emt.test(TRACKER)
+        key = cv2.waitKey(1) & 0xFF
+        if key == ord('q'):
+            break
+
+    TRACKER.stop_tracking()
+    TRACKER.close()
+
 
 def test_camera():
     """
@@ -15,6 +37,10 @@ def test_camera():
     """
     # This will return video from the first webcam on your computer.
     cap = cv2.VideoCapture(0)
+    if not cap.isOpened():
+        print('Cannot open camera')
+        exit()
+
     # Define the codec and create VideoWriter object
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter('output.avi', fourcc, 20.0, (600, 300))
@@ -23,6 +49,10 @@ def test_camera():
         # reads frames from a camera
         # ret checks return at each frame
         ret, frame = cap.read()
+        if not ret:
+            print('Cannot recieve frame (stream end?). Exiting')
+            break
+
         # The original input frame is shown in the window
         cv2.imshow('Original', frame)
         # Wait for 'a' key to stop the program
@@ -37,17 +67,12 @@ def test_camera():
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
-def acquire_data_hande_eye_calibration(save_dir):
-    return 0
 
 def acquire_data_camera_calibration(save_dir):
 
     # This will return video from the first webcam on your computer.
     cap = cv2.VideoCapture(0)
-
     # Define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
     #save_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
     save_imgs_dir = save_dir
     img_id = 0000
@@ -62,7 +87,6 @@ def acquire_data_camera_calibration(save_dir):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         found, corners = cf.find_corners(gray, pattern_size)
         draw_img = cf.draw_corners(gray, corners, pattern_size)
-
         resized = cv2.resize(draw_img, (450, 300))
         # The original input frame is shown in the window
         cv2.imshow('Original', resized)
@@ -79,10 +103,6 @@ def acquire_data_camera_calibration(save_dir):
 
     # Close the window / Release webcam
     cap.release()
-
-    # After we release our webcam, we also release the output
-    out.release()
-
     # De-allocate any associated memory usage
     cv2.destroyAllWindows()
 
@@ -91,7 +111,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser('Camera and Hand-Eye robot calibration')
     parser.add_argument('command', metavar="<command>", default='test_camera',
-                        help='test_camera, calibrate_camera, eye_hand_calibration ')
+                        help='test_camera, test_sensor, eye_hand_calibration ')
     parser.add_argument('--pattern_size', required=False,
                         metavar="tuple", default=(7, 5),
                         help='Pattern size of the chessboard to detect')
@@ -107,25 +127,26 @@ if __name__ == "__main__":
     if args.command != "test_camera":
         assert args.pattern_size, "Argument --pattern_size is required for camera " \
                              "calibration and eye-hand calibration"
+
         assert args.square_size, "Provide --square_size is required for camera " \
                              "calibration and eye-hand calibration"
-    elif args.command == "detect":
-        assert args.square_size, "Provide --square_size is required for camera " \
-                             "calibration and eye-hand calibration"
+
+    #elif args.command == "test_sensor":
 
     pattern_size = (7, 5)
     square_size = 0.036
     # Configurations
     if args.command == "test_camera":
         test_camera()
+    elif args.command == 'test_sensor':
+        test_sensor()
     elif args.command == "acquire_data_camera_calibration":
         acquire_data_camera_calibration(args.save_dir)
-
     elif args.command == "acquire_data_hande_eye_calibration":
-        acquire_data_camera_calibration(args.save_dir, args.pattern_size, args.square_size)
-    
+        acquire_data_camera_calibration(args.save_dir)
     elif args.command == 'hand_eye_calibration':
-        acquire_data_camera_calibration(args.save_dir, args.pattern_size, args.square_size)
+        acquire_data_camera_calibration(args.save_dir)
+
          
 
 """    # Create model
