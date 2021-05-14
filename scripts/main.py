@@ -20,6 +20,10 @@ def main():
 
     while True:
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
+        if not ret:
+            print('Cannot recieve frame (stream end?). Exiting')
+            break
+
         for t in tracking:
             x = t[0][3]
             y = t[1][3]
