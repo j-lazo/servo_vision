@@ -6,6 +6,14 @@ import os
 from computer_vision import calibration
 from em_tracking import sample_test as emt
 from sksurgerynditracker.nditracker import NDITracker
+from control import pySerial_request as pysr
+
+
+def test_actuators():
+
+    while True:
+        motor_enconders = pysr.request_encoder_value()
+        print(motor_enconders)
 
 
 def test_sensor():
