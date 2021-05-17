@@ -13,12 +13,17 @@ def test_actuators():
 
     arduino_port_1, arduino_port_2, arduino_port_3 = pysr.initialize_ports()
 
+    counter = 0
     while True:
         motor_enconders = pysr.request_encoder_value(arduino_port_1, arduino_port_2, arduino_port_3)
         encoder_1 = motor_enconders[0]
         encoder_2 = motor_enconders[1]
         encoder_3 = motor_enconders[2]
-        print(encoder_1, encoder_2, encoder_3)
+        print('encoder 1:', encoder_1.decode())
+        print('encoder 2:', encoder_2.decode())
+        print('encoder 3', encoder_3.decode())
+        #print(counter)
+        #counter = counter + 1
         #print('\r' in ((encoder_1.decode())))
 
 
@@ -149,6 +154,7 @@ def acquire_data_camera_calibration(save_dir):
     #save_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
     save_imgs_dir = save_dir + '/image_list/'
     save_pos_dir = save_dir + '/pos_list/'
+    print(os.path.isdir(save_dir + '/pos_list/'))
     img_id = 0000
 
     while True:
