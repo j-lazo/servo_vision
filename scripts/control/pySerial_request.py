@@ -4,12 +4,12 @@ import time
 
 def request_encoder_value(arduino_port_1, arduino_port_2, arduino_port_3):
 
-    variable = 're'
+    variable = "re"
     arduino_port_1.write(variable.encode())
     arduino_port_2.write(variable.encode())
     arduino_port_3.write(variable.encode())
 
-    while not arduino_port_1.in_waiting:
+    while arduino_port_1.in_waiting == 0 | arduino_port_2.in_waiting == 0 | arduino_port_3.in_waiting == 0:
         break
 
     motor_side_encoder = arduino_port_1.readline()
@@ -34,7 +34,7 @@ def initialize_ports(arduino_com_port_1='/dev/ttyACM2',
     arduino_port_2 = serial.Serial(arduino_com_port_2, 115200, writeTimeout=0)  # port 2 is for the side motor
     arduino_port_3 = serial.Serial(arduino_com_port_3, 115200, writeTimeout=0)  # port 3 is for the linear stage motor
 
-
+    time.sleep(2)
 
 
     return arduino_port_1, arduino_port_2, arduino_port_3
