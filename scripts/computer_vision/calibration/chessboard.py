@@ -1,7 +1,6 @@
 import numpy
 import cv2
 import os
-import numpy as np
 
 pattern_size = (7, 5)
 square_size = 3.67
@@ -46,8 +45,8 @@ def calibrate_lens(dir_imgs):
         img_points.append(corners.reshape(-1, 2))
         obj_points.append(pattern_points)
 
-    camera_matrix = numpy.zeros((3,3))
+    camera_matrix = numpy.zeros((3, 3))
     dist_coeffs = numpy.zeros(5)
-#    rms, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, (w,h))
-    cv2.calibrateCamera(obj_points, img_points, (w,h), camera_matrix, dist_coeffs)
+#   rms, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, (w,h))
+    cv2.calibrateCamera(obj_points, img_points, (w, h), camera_matrix, dist_coeffs)
     return camera_matrix, dist_coeffs

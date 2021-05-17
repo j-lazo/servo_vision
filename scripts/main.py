@@ -21,11 +21,13 @@ def main():
 
     while True:
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
+        ret, frame = cap.read()
         if not ret:
             print('Cannot recieve frame (stream end?). Exiting')
             break
-
+        print(type(tracking))
         for t in tracking:
+            print(type(t))
             x = t[0][3]
             y = t[1][3]
             z = t[2][3]
@@ -33,9 +35,8 @@ def main():
 
         # reads frames from a camera
         # ret checks return at each frame
-        ret, frame = cap.read()
         # read serial to obtain current states of actuation joint variables
-        motor_encoders = pysr.request_encoder_value()  # motor_encoders contains is a list contain the current encoder value
+        #motor_encoders = pysr.request_encoder_value()  # motor_encoders contains is a list contain the current encoder value
         # frame is converted to hsv
         resized = cv2.resize(frame, (500, 300))
         # The original input frame is shown in the window

@@ -18,7 +18,8 @@ def test_actuators():
         encoder_1 = motor_enconders[0]
         encoder_2 = motor_enconders[1]
         encoder_3 = motor_enconders[2]
-        print('\r' in ((encoder_1.decode())))
+        print(encoder_1, encoder_2, encoder_3)
+        #print('\r' in ((encoder_1.decode())))
 
 
 def test_sensor():
