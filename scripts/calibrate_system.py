@@ -36,9 +36,10 @@ def test_sensor():
         "tracker type": "aurora",
         "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
     }
-
+    print('connecting with sensor...')
     TRACKER = NDITracker(SETTINGS)
     TRACKER.start_tracking()
+
     while True:
         emt.test(TRACKER)
         key = cv2.waitKey(1) & 0xFF
