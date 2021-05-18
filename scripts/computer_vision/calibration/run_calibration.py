@@ -1,11 +1,12 @@
-import chessboard
-import park_martin
 import yaml
 from scipy.linalg import expm, inv
 from numpy import dot, eye
 import numpy as np
 import os
 import cv2
+from computer_vision.calibration import chessboard
+from computer_vision.calibration import park_martin
+
 
 
 def hat(v):
@@ -37,7 +38,7 @@ def read_text_file(file_path):
     return matrix
 
 
-def main(data_dir):
+def hand_eye_calibration(data_dir):
     corner_list = []
     obj_pose_list = []
 
@@ -49,6 +50,7 @@ def main(data_dir):
     camera_matrix, dist_coeffs = chessboard.calibrate_lens(dir_imgs)
 
     for i, img in enumerate(img_list):
+        print(img)
         image = cv2.imread(''.join([dir_imgs, '/', img]))
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         found, corners = chessboard.find_corners(gray)
@@ -105,4 +107,4 @@ if __name__ == "__main__":
     #data_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
     data_dir = os.path.join(os.getcwd(), 'data', 'calibration')
     print(os.getcwd())
-    main(data_dir=data_dir)
+    hand_eye_calibration(data_dir=data_dir)
