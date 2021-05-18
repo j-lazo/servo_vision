@@ -3,10 +3,20 @@ import cv2
 from general_functions import calibration_functions as cf
 import argparse
 import os
-from computer_vision import calibration
 from em_tracking import sample_test as emt
 from sksurgerynditracker.nditracker import NDITracker
 from control import pySerial_request as pysr
+import computer_vision.calibration.run_calibration as cal
+
+
+def test_input_arduino():
+
+    return 0
+
+
+def test_control():
+
+    return 0
 
 
 def test_actuators():
@@ -140,6 +150,16 @@ def test_all_systems_together():
     cv2.destroyAllWindows()
 
 
+def hand_eye_calibration(dir_data):
+    if len(os.listdir(dir_data + '/image_list/')) == 0:
+       print('The directory indicated is empty, '
+             'please check the path or use acquire_data_camera_calibration'
+             'function to acquire data')
+    else:
+        cal.hand_eye_calibration(dir_data)
+
+
+
 def acquire_data_camera_calibration(save_dir):
 
     # Settings for the em tracking sensor
@@ -220,9 +240,13 @@ if __name__ == "__main__":
     parser.add_argument('--square_size', required=False,
                         metavar="int", default=0.036,
                         help='Square size of the pattern to detect')
-    parser.add_argument('--save_dir', required=False,
+    parser.add_argument('--output_dir', required=False,
                         metavar="int", default=os.getcwd(),
-                        help='Directory to save the snapshots')
+                        help='Directory to save the snapshots and position matrix')
+    parser.add_argument('--input_dir', required=False,
+                        metavar="int", default=os.getcwd(),
+                        help='Directory where the directories /image_list and '
+                             '/pos_list are located')
 
     args = parser.parse_args()
     # Validate arguments
@@ -240,14 +264,16 @@ if __name__ == "__main__":
     # Configurations
     if args.command == "test_camera":
         test_camera()
-    elif args.command == 'test_sensor':
+    elif args.command == 'test_sensors':
         test_sensor()
     elif args.command == "test_actuators":
         test_actuators()
     elif args.command == "acquire_data_camera_calibration":
-        acquire_data_camera_calibration(args.save_dir)
+        acquire_data_camera_calibration(args.output_dir)
     elif args.command == 'hand_eye_calibration':
-        acquire_data_camera_calibration(args.save_dir)
+        hand_eye_calibration(args.input_dir)
+    else:
+        raise Exception("The command written was not found")
 
 
 """    # Create model
