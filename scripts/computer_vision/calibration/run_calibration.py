@@ -37,7 +37,7 @@ def read_text_file(file_path):
     return matrix
 
 
-def main(data_dir):
+def hand_eye_calibration(data_dir):
     corner_list = []
     obj_pose_list = []
 
@@ -106,4 +106,4 @@ if __name__ == "__main__":
     #data_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
     data_dir = os.path.join(os.getcwd(), 'data', 'calibration')
     print(os.getcwd())
-    main(data_dir=data_dir)
+    hand_eye_calibration(data_dir=data_dir)
