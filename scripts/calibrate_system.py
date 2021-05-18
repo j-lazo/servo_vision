@@ -152,12 +152,12 @@ def test_all_systems_together():
 
 def hand_eye_calibration(dir_data):
     if len(os.listdir(dir_data + '/image_list/')) == 0:
-       print('The directory indicated is empty, '
+       raise ValueError('The directory indicated is empty, '
              'please check the path or use acquire_data_camera_calibration'
              'function to acquire data')
+
     else:
         cal.hand_eye_calibration(dir_data)
-
 
 
 def acquire_data_camera_calibration(save_dir):
