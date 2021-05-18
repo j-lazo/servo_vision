@@ -1,11 +1,12 @@
-import chessboard
-import park_martin
 import yaml
 from scipy.linalg import expm, inv
 from numpy import dot, eye
 import numpy as np
 import os
 import cv2
+from computer_vision.calibration import chessboard
+from computer_vision.calibration import park_martin
+
 
 
 def hat(v):
