@@ -49,6 +49,7 @@ def main(data_dir):
     camera_matrix, dist_coeffs = chessboard.calibrate_lens(dir_imgs)
 
     for i, img in enumerate(img_list):
+        print(img)
         image = cv2.imread(''.join([dir_imgs, '/', img]))
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         found, corners = chessboard.find_corners(gray)

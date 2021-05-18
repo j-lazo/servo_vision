@@ -34,6 +34,7 @@ def calibrate_lens(dir_imgs):
     img_points, obj_points = [], []
     h, w = 0, 0
     for image_name in img_list:
+        print(image_name)
         img = cv2.imread(os.path.join(dir_imgs, image_name))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         #img = cv2.rotate(img, cv2.ROTATE_180)
