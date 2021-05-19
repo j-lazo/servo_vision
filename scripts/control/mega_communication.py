@@ -27,38 +27,31 @@ def serial_request(arduino_port_1):
             # print ("waiting for serial data")
     receive_data_upper = arduino_port_1.readline()
     receive_data_side = arduino_port_1.readline()
+    receive_data_stepper = arduino_port_1.readline()
 
-        # motor_upper_encoder = arduino_port_1.readline().decode()
-        # motor_side_encoder = arduino_port_1.readline().decode()
     print ("this is what I receive::")
-    print (receive_data_upper.decode("utf-8"), receive_data_side, type(receive_data_upper), type(receive_data_upper.decode()))
-    return #[motor_upper_encoder, motor_side_encoder]
+    print (receive_data_upper.decode("utf-8"), receive_data_side, type(receive_data_upper), type(receive_data_upper.decode()), receive_data_stepper)
+    return [receive_data_upper, receive_data_side, receive_data_stepper]
 
 
-def serial_actuate(upper_joint_variable, side_joint_variable, arduino_port_1):
+def serial_actuate(upper_joint_variable, side_joint_variable, stepper_joint_variable, arduino_port_1):
     arduino_port_1.flushInput()
     arduino_port_1.flushOutput()
 
     upper_joint_variable = "{:.0f}".format(upper_joint_variable)
     side_joint_variable = "{:.0f}".format(side_joint_variable)
-    arduino_port_1.write((upper_joint_variable + "," + side_joint_variable).encode())
+    stepper_joint_variable = "{:.0f}".format(stepper_joint_variable)
+    arduino_port_1.write((upper_joint_variable + ","+ side_joint_variable+";"+stepper_joint_variable).encode())
 
-    return upper_joint_variable, side_joint_variable
-
-
-def main():
-
-    arduino_port_1 = serial_initialization()
-    while True:
-        print(serial_request(arduino_port_1))
-        sleep(0.05)
-        a = random.randint(-30, 30)
-        b = random.randint(-30, 30)
-        print(serial_actuate(a, b, arduino_port_1))
+    return upper_joint_variable, side_joint_variable, stepper_joint_variable
 
 
-if __name__ == "__main__":
-    main()
-
-
+arduino_port_1 = serial_initialization()
+while True:
+    print serial_request(arduino_port_1)
+    sleep(1)
+    a = random.randint(-30,30)
+    b = random.randint(-30,30)
+    c = random.randint(-5,5)
+    print serial_actuate(a, b, c, arduino_port_1)
 
