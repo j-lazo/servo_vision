@@ -4,6 +4,12 @@ import os
 
 def test(tracker):
 
+    """
+
+    @param tracker:
+    @return:
+    """
+
     port_handles, timestamps, framenumbers, tracking, quality = tracker.get_frame()
     for t in tracking:
         print('x:', t[0][3],
