@@ -7,23 +7,35 @@ from em_tracking import sample_test as emt
 from sksurgerynditracker.nditracker import NDITracker
 from control import pySerial_request as pysr
 import computer_vision.calibration.run_calibration as cal
+from control import mega_communication as mc
+from control import find_arduino
+from time import sleep
+import random
 
 
 def test_input_arduino():
-
+    port_arduino = find_arduino.find_arduino()
     return 0
 
 
 def test_control():
+    port_arduino = find_arduino.find_arduino()
+    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=port_arduino)
+    while True:
 
-    return 0
+        sleep(0.01)
+        a = random.randint(-30, 30)
+        b = random.randint(-30, 30)
+        c = random.randint(-5, 5)
+        print(mc.serial_actuate(a, b, c, arduino_port_1))
+        print(mc.serial_request(arduino_port_1))
+        print("one cycle")
 
 
 def test_actuators():
 
     arduino_port_1, arduino_port_2, arduino_port_3 = pysr.initialize_ports()
 
-    counter = 0
     while True:
         motor_enconders = pysr.request_encoder_value(arduino_port_1, arduino_port_2, arduino_port_3)
         encoder_1 = motor_enconders[0]
@@ -32,9 +44,6 @@ def test_actuators():
         print('encoder 1:', encoder_1.decode())
         print('encoder 2:', encoder_2.decode())
         print('encoder 3', encoder_3.decode())
-        #print(counter)
-        #counter = counter + 1
-        #print('\r' in ((encoder_1.decode())))
 
 
 def test_sensor():
@@ -272,6 +281,10 @@ if __name__ == "__main__":
         acquire_data_camera_calibration(args.output_dir)
     elif args.command == 'hand_eye_calibration':
         hand_eye_calibration(args.input_dir)
+    elif args.command == 'test_control':
+        test_control()
+    elif args.command == 'test_input_arduino':
+        test_input_arduino()
     else:
         raise Exception("The command written was not found")
 
