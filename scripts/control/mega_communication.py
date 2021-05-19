@@ -1,7 +1,6 @@
 import serial
 from time import sleep
 import random
-
 # def serial_initialization(arduino_com_port_1='COM4', arduino_com_port_2='COM12', arduino_com_port_3='COM6'):
 #     arduino_port_1 = serial.Serial(arduino_com_port_1, 115200, writeTimeout=0)  # port 1 is for the upper motor
 #     arduino_port_2 = serial.Serial(arduino_com_port_2, 115200, writeTimeout=0)  # port 2 is for the side motor
@@ -10,10 +9,12 @@ import random
 #
 #     return arduino_port_1, arduino_port_2, arduino_port_3
 
+
 def serial_initialization(arduino_com_port_1='COM9'):
     arduino_port_1 = serial.Serial(arduino_com_port_1, 115200, writeTimeout=0.5, timeout= 0.5)  # port 1 is for the upper motor
     sleep(2)
     return arduino_port_1
+
 
 def serial_request(arduino_port_1):
 
@@ -25,12 +26,13 @@ def serial_request(arduino_port_1):
     #     print("STUCK")
     #     pass
             # print ("waiting for serial data")
+    #receive_data_test = arduino_port_1.readline()
     receive_data_upper = arduino_port_1.readline()
     receive_data_side = arduino_port_1.readline()
     receive_data_stepper = arduino_port_1.readline()
 
-    print ("this is what I receive::")
-    print (receive_data_upper.decode("utf-8"), receive_data_side, type(receive_data_upper), type(receive_data_upper.decode()), receive_data_stepper)
+    #print("this is what I receive::")
+    #print(receive_data_upper.decode("utf-8"), receive_data_side, type(receive_data_upper), type(receive_data_upper.decode()), receive_data_stepper)
     return [receive_data_upper, receive_data_side, receive_data_stepper]
 
 
@@ -41,7 +43,7 @@ def serial_actuate(upper_joint_variable, side_joint_variable, stepper_joint_vari
     upper_joint_variable = "{:.0f}".format(upper_joint_variable)
     side_joint_variable = "{:.0f}".format(side_joint_variable)
     stepper_joint_variable = "{:.0f}".format(stepper_joint_variable)
-    arduino_port_1.write((upper_joint_variable + ","+ side_joint_variable+";"+stepper_joint_variable).encode())
+    arduino_port_1.write((upper_joint_variable + "," +side_joint_variable + ";" + stepper_joint_variable).encode())
 
     return upper_joint_variable, side_joint_variable, stepper_joint_variable
 

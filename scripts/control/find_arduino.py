@@ -6,15 +6,14 @@ import glob
 
 
 def find_arduino():
-
+    ser = 'naN'
     os_name = platform.system()
     print('OS:', os_name)
 
     if os_name == 'Windows':
 
-        ports = [p.device
-                        for p in serial.tools.list_ports.comports()
-                        if 'Arduino' in p.description]
+        ports = [p.device for p in serial.tools.list_ports.comports()
+                 if 'Arduino' in p.description]
 
         if not ports:
             raise IOError("No Arduino found")
@@ -25,7 +24,7 @@ def find_arduino():
         ser = serial.Serial(ports[0])
 
     elif os_name == 'Linux':
-        glist = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*')
+        glist = glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*') + glob.glob('/dev/ttyS*')
         if not glist:
             raise IOError("No Arduino found")
 
@@ -36,7 +35,6 @@ def find_arduino():
 
     else:
         raise IOError("OS detected not compatible with script")
-        ser = 'naN'
 
     return ser
 

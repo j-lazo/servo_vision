@@ -15,25 +15,24 @@ import random
 
 def test_input_arduino():
     port_arduino = find_arduino.find_arduino()
-    return 0
+    print('Arduino detected at:', port_arduino)
 
 
 def test_control():
     port_arduino = find_arduino.find_arduino()
-    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=port_arduino)
+    print('Arduino detected at:', port_arduino)
+    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino.port))
     while True:
-
-        sleep(0.01)
+        print(mc.serial_request(arduino_port_1))
         a = random.randint(-30, 30)
         b = random.randint(-30, 30)
         c = random.randint(-5, 5)
         print(mc.serial_actuate(a, b, c, arduino_port_1))
-        print(mc.serial_request(arduino_port_1))
         print("one cycle")
 
 
 def test_actuators():
-
+    # TODO: Update to Mega code, use serial_request()
     arduino_port_1, arduino_port_2, arduino_port_3 = pysr.initialize_ports()
 
     while True:
