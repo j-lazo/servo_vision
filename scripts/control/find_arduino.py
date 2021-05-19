@@ -4,6 +4,7 @@ import serial.tools.list_ports
 import platform
 import glob
 
+
 def find_arduino():
 
     os_name = platform.system()
@@ -38,4 +39,10 @@ def find_arduino():
         ser = 'naN'
 
     return ser
+
+
+if __name__ == '__main__':
+    port = find_arduino()
+    print(port)
+
 
