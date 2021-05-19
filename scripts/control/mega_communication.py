@@ -41,16 +41,24 @@ def serial_actuate(upper_joint_variable, side_joint_variable, arduino_port_1):
 
     upper_joint_variable = "{:.0f}".format(upper_joint_variable)
     side_joint_variable = "{:.0f}".format(side_joint_variable)
-    arduino_port_1.write((upper_joint_variable + ","+ side_joint_variable).encode())
+    arduino_port_1.write((upper_joint_variable + "," + side_joint_variable).encode())
 
     return upper_joint_variable, side_joint_variable
 
 
-arduino_port_1 = serial_initialization()
-while True:
-    print serial_request(arduino_port_1)
-    sleep(0.05)
-    a = random.randint(-30,30)
-    b = random.randint(-30,30)
-    print serial_actuate(a, b, arduino_port_1)
+def main():
+
+    arduino_port_1 = serial_initialization()
+    while True:
+        print(serial_request(arduino_port_1))
+        sleep(0.05)
+        a = random.randint(-30, 30)
+        b = random.randint(-30, 30)
+        print(serial_actuate(a, b, arduino_port_1))
+
+
+if __name__ == "__main__":
+    main()
+
+
 
