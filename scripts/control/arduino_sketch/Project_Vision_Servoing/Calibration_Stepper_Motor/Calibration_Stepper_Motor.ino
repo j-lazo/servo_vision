@@ -26,13 +26,14 @@ int lastLSB = 0;
 int microstepping = 64;
 int one_revolution = 200 * microstepping;
 
-const int motorSpeedLinearStage = 20;
+const int motorSpeedLinearStage = 30;
 int lastReceive = 0;
 
 #include <TMC2130Stepper.h>
 TMC2130Stepper TMC2130 = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
 
 String receiveData;
+String abc = "re";
 
 
 void setup() {
@@ -44,7 +45,7 @@ void setup() {
 
   // Serial Setup:
   Serial.begin(115200); // set the baud rate
-  Serial.println(90); // print "Ready" once
+  //Serial.println(90); // print "Ready" once
   Serial.flush();
   //Interrupt Setup:
   pinMode(encoderPin1, INPUT_PULLUP); 
@@ -56,7 +57,7 @@ void setup() {
 
   //TMC2130 SETUP
   TMC2130.begin(); // Initiate pins and registeries
-  TMC2130.SilentStepStick2130(800); // Set stepper current to 600mA
+  TMC2130.SilentStepStick2130(900); // Set stepper current to 600mA
   TMC2130.stealthChop(1); // Enable extremely quiet stepping
   TMC2130.microsteps(microstepping);
   digitalWrite(EN_PIN, LOW);
@@ -68,23 +69,31 @@ void setup() {
 void loop() {
   
   //Receive char(s) from python serial communication
-  Serial.flush();
+//  Serial.flush();
   while(Serial.available()){ // only send data back if data has been sent
     delay(3);
     char c = Serial.read(); // read the incoming data
     receiveData += c;
   }
   if(receiveData.length()>0){ //Verify that the variable contains information
-    int User_Input = receiveData.toInt(); //store the data from serial input in interger type
-    receiveData = ""; //clear out the store data // put it into pwmOut function.
-    lastReceive = User_Input;
+
+    if(receiveData == abc){
+      Serial.println(encoderValue);
+      receiveData = "";
+    }
+    else{
+      int User_Input = receiveData.toInt(); //store the data from serial input in interger type
+      receiveData = ""; //clear out the store data // put it into pwmOut function.
+      lastReceive = User_Input;
+    }
   }
+  Serial.flush();
+  delay(10);
 
 
 if(lastReceive == 1){
   digitalWrite(DIR_PIN,HIGH); //Changes the rotations direction
   // Makes 200 pulses for making one full cycle rotation
-  Serial.println("forward");
   for(int x = 0; x < one_revolution; x++) {
     digitalWrite(STEP_PIN,HIGH);
     delayMicroseconds(motorSpeedLinearStage);
@@ -95,7 +104,6 @@ if(lastReceive == 1){
   lastReceive = 0;
 }
 if(lastReceive == -1){
-  Serial.println("backward");
   digitalWrite(DIR_PIN,LOW); //Changes the rotations direction
   // Makes 400 pulses for making two full cycle rotation
   for(int x = 0; x < one_revolution; x++) {
@@ -107,6 +115,7 @@ if(lastReceive == -1){
   delay(200);
   lastReceive = 0;
 }
+
 }
 
 void updateEncoder(){

@@ -28,14 +28,13 @@ int one_revolution = 200 * microstepping / 5;
 
 const int motorSpeedLinearStage = 30;
 int lastReceive = 0;
-
+int counter = 0;
 
 
 #include <TMC2130Stepper.h>
 TMC2130Stepper TMC2130 = TMC2130Stepper(EN_PIN, DIR_PIN, STEP_PIN, CS_PIN);
 
-String receiveData;
-String abc = "re";
+
 
 void setup() {
   // Sets the two pins as Outputs
@@ -46,8 +45,6 @@ void setup() {
 
   // Serial Setup:
   Serial.begin(115200); // set the baud rate
-  Serial.println(90); // print "Ready" once
-  Serial.flush();
   //Interrupt Setup:
   pinMode(encoderPin1, INPUT_PULLUP); 
   pinMode(encoderPin2, INPUT_PULLUP);
@@ -65,45 +62,23 @@ void setup() {
   
   //delay
   delay(100);
-  TMC2130.shaft_dir(1);    
+  TMC2130.shaft_dir(true);    
 }
 void loop() {
   
 //Receive char(s) from python serial communication
-
+  counter = counter + 1;
   digitalWrite(STEP_PIN,HIGH);
   delayMicroseconds(30);
   digitalWrite(STEP_PIN,LOW);
   delayMicroseconds(30);
-//  if(lastReceive == 1){
-//    TMC2130.shaft_dir(1);
-//    Serial.println("forward");
-//    }
-//    delay(200); // One second delay
-//    lastReceive = 0;
-//  if(lastReceive == -1){
-//    TMC2130.shaft_dir(0);
-//    Serial.println("backward");
-//    }
-//
-  while(Serial.available()){ // only send data back if data has been sent
-    delay(3);
-    char c = Serial.read(); // read the incoming data
-    receiveData += c;
+
+  if(encoderValue == 3000 || encoderValue == -3000){
+    dir = !dir;
+    TMC2130.shaft_dir(dir);
+    delay(100);
   }
-  if(receiveData == abc){
-    Serial.println(encoderValue);
-    receiveData = "";
-    delay(5);
-  }
-  else if(receiveData.length()>0){ //Verify that the variable contains information
-    int User_Input = receiveData.toInt(); //store the data from serial input in interger type
-    receiveData = ""; //clear out the store data // put it into pwmOut function.
-    if(User_Input > 10) TMC2130.shaft_dir(0);
-    else if (User_Input < 10) TMC2130.shaft_dir(1);
-    Serial.println(receiveData);
-    
-  }
+  
 }
 
 void updateEncoder(){

@@ -1,6 +1,9 @@
 // DC motor gear ratio : 200 
 // Encoder 2 pulse per revolution
 
+//COM 12
+
+
 String receiveData;
 String abc = "re";
 
@@ -47,8 +50,8 @@ void setup() {
  
   //Seup for Serial connection:
   Serial.begin(115200); // set the baud rate
-  Serial.println(5); // print "Ready" once
-  receiveData   = "0";
+  //Serial.println(5); // print "Ready" once
+  //receiveData   = "0";
   Serial.flush();
   
   //Setup: interrupts for motors and encoders
@@ -65,7 +68,6 @@ void loop() {
   //This first section is for receiving data and sending data
   //Receive char(s) from python serial communication
 //  Serial.flush();
-  delay(8);
   while(Serial.available()){ // only send data back if data has been sent
     delay(3);
     char c = Serial.read(); // read the incoming data
@@ -74,10 +76,10 @@ void loop() {
   if(receiveData == abc){
     Serial.println(encoderValue);
     receiveData = "";
-    delay(5);
   }
   else{
     if(receiveData.length()>0){ //Verify that the variable contains information
+      Serial.println(receiveData);
       int User_Input = receiveData.toInt(); //store the data from serial input in interger type
       receiveData = ""; //clear out the store data // put it into pwmOut function.
       delay(3);
@@ -94,7 +96,7 @@ void loop() {
   pwmOut(output);
 
   Serial.flush();
-  delay(10); // delay for 1/100 of a second
+  delay(5); // delay for 1/100 of a second
 }
 void updateEncoder(){
   int MSB = digitalRead(encoderPin1); //MSB = most significant bit
