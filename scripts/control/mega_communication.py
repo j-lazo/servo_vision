@@ -46,12 +46,16 @@ def serial_actuate(upper_joint_variable, side_joint_variable, stepper_joint_vari
     return upper_joint_variable, side_joint_variable, stepper_joint_variable
 
 
-arduino_port_1 = serial_initialization()
-while True:
-    print serial_request(arduino_port_1)
-    sleep(1)
-    a = random.randint(-30,30)
-    b = random.randint(-30,30)
-    c = random.randint(-5,5)
-    print serial_actuate(a, b, c, arduino_port_1)
+def main():
+    arduino_port_1 = serial_initialization()
+    while True:
+        print(serial_request(arduino_port_1))
+        sleep(1)
+        a = random.randint(-30,30)
+        b = random.randint(-30,30)
+        c = random.randint(-5,5)
+        print(serial_actuate(a, b, c, arduino_port_1))
 
+
+if __name__ == '__main__':
+    main()
