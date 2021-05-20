@@ -34,7 +34,10 @@ def serial_request(arduino_port_1):
 
     #print("this is what I receive::")
     #print(receive_data_upper.decode("utf-8"), receive_data_side, type(receive_data_upper), type(receive_data_upper.decode()), receive_data_stepper)
-    return [receive_data_upper, receive_data_side, receive_data_stepper]
+
+    current_act_joint_variable = [float(receive_data_upper), float(receive_data_side), float(receive_data_stepper)]
+
+    return current_act_joint_variable
 
 
 def serial_actuate(upper_joint_variable, side_joint_variable, stepper_joint_variable, arduino_port_1):
