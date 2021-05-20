@@ -1,0 +1,15 @@
+
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/servo_vision.iml
+.idea/vcs.xml
+.idea/workspace.xml
+scripts/computer_vision/__init__.pyc
+scripts/computer_vision/calibration/__init__.pyc
+scripts/control/__init__.pyc
+scripts/control/pySerial_request.pyc
+scripts/em_tracking/__init__.pyc
+scripts/em_tracking/sample_test.pyc
+scripts/general_functions/__init__.pyc
+scripts/general_functions/calibration_functions.pyc

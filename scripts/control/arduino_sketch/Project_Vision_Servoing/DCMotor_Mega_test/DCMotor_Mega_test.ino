@@ -70,6 +70,7 @@ char receiveData = 'c';
 String receiveData_upper = "";
 String receiveData_side = "";
 String receiveData_stepper = "";
+String receiveData_test = "";
 
 void setup() {
   // put your setup code here, to run once:
@@ -133,10 +134,13 @@ void loop() {
 
 ////////////////////////////////////////////Read from Serial////////////////////////////////////////////////
   int seperate_flag = 0;
+  int read_flag = 0;
   while(Serial.available()){ // only send data back if data has been sent
-    delay(3);
+    delay(10);
     char c = Serial.read(); // read the incoming data
+    receiveData_test += c;
 //    Serial.print(c);
+    
     if(c == ','){
       seperate_flag = 1;
     }
@@ -144,7 +148,8 @@ void loop() {
       seperate_flag = 2;
     }
     else if(c == 'r'){
-      receiveData = 'r';
+      read_flag = 1;
+      c = 0;
     }
     else{
       if(seperate_flag == 0) receiveData_upper += c;
@@ -152,7 +157,8 @@ void loop() {
       else if(seperate_flag == 2) receiveData_stepper +=c;
     }
   }
-  if (receiveData == 'r'){
+  if (read_flag == 1){
+    Serial.println(receiveData_test);
 //    Serial.print("(");
     Serial.println(encoderValue_upper);
 //    Serial.print(",");
@@ -162,7 +168,7 @@ void loop() {
 //    Serial.println(")");
     receiveData = 'c'; // clear the flag comes into here
   }
-  else if (receiveData_upper.length() != 0 && receiveData_side.length() != 0 && receiveData_stepper.length() != 0){
+  if (receiveData_upper.length() != 0 && receiveData_side.length() != 0 && receiveData_stepper.length() != 0){
     user_input_upper = receiveData_upper.toInt();
     user_input_side  = receiveData_side.toInt();
     user_input_stepper  = receiveData_stepper.toInt();
@@ -201,22 +207,22 @@ void loop() {
   side_motor_PID.Compute();                 // calculate new output
   pwmOut(side_output, SideMotEnable);
 //  for serial plot test
-  Serial.print(REV_upper);
-  Serial.print(",");
-  Serial.print(encoderValue_upper);
-  Serial.print(",");
-  Serial.print(REV_side);
-  Serial.print(",");
-  Serial.print(encoderValue_side);
-  Serial.print(",");
-  Serial.print(DIST_stepper);
-  Serial.print(",");
-  Serial.println(encoderValue_stepper);
+//  Serial.print(REV_upper);
+//  Serial.print(",");
+//  Serial.print(encoderValue_upper);
+//  Serial.print(",");
+//  Serial.print(REV_side);
+//  Serial.print(",");
+//  Serial.print(encoderValue_side);
+//  Serial.print(",");
+//  Serial.print(DIST_stepper);
+//  Serial.print(",");
+//  Serial.println(encoderValue_stepper);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////STEPPER MOTOR///////////////////////////////////////////////
   stepper_motor_digitalwrite(DIST_stepper, encoderValue_stepper);
-
+  receiveData_test = "";
 }
 
 void updateEncoder_upper(){
