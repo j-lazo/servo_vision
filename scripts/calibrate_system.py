@@ -19,16 +19,40 @@ def test_input_arduino():
 
 
 def test_control():
+
+    predefined_joints_values = [[7, 4, 0],
+                                [-6, -2, 0],
+                                [3, 2, 0],
+                                [-8, -4, 0],
+                                [2, 9, 0],
+                                [-5, 8, 0],
+                                [-10, 2, 0],
+                                [-10, 2, 1],
+                                [7, 7, 1],
+                                [-6, -3, 1],
+                                [3, 5, 1],
+                                [-6, 8, 1],
+                                [3, 2, 1],
+                                [-13, 13, 1],
+                                [-13, 13, 2],
+                                [-4, 4, 2],
+                                [8, 3, 2],
+                                [8, 13, 2],
+                                [-6, -6, 2],
+                                [-8, 8, 2],
+                                [2, -2, 2]]
+
     port_arduino = find_arduino.find_arduino()
     print('Arduino detected at:', port_arduino)
-    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino.port))
-    while True:
+    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+
+    for joints_values in predefined_joints_values:
         print(mc.serial_request(arduino_port_1))
-        a = random.randint(-30, 30)
-        b = random.randint(-30, 30)
-        c = random.randint(-5, 5)
+        a = joints_values[0]
+        b = joints_values[1]
+        c = joints_values[2]*5
         print(mc.serial_actuate(a, b, c, arduino_port_1))
-        print("one cycle")
+        sleep(2)
 
 
 def test_actuators():
