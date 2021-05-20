@@ -158,7 +158,7 @@ void loop() {
     }
   }
   if (read_flag == 1){
-    Serial.println(receiveData_test);
+//    Serial.println(receiveData_test);
 //    Serial.print("(");
     Serial.println(encoderValue_upper);
 //    Serial.print(",");

@@ -47,16 +47,16 @@ void loop() {
 
 if(digitalRead(DIR_FLAG1) == HIGH && digitalRead(DIR_FLAG2) == LOW){
   actuate_forward();
-  Serial.println("f");
+//  Serial.println("f");
   }
 else if(digitalRead(DIR_FLAG1) == LOW && digitalRead(DIR_FLAG2) == HIGH){
   actuate_backward();
-  Serial.println("b");
+//  Serial.println("b");
 
   }
 else{
   digitalWrite(EN_PIN, LOW);
-  Serial.println("0");
+//  Serial.println("0");
   }
 //
 //  if(digitalRead(DIR_FLAG1) == HIGH && digitalRead(DIR_FLAG2) == LOW ){
@@ -77,7 +77,7 @@ else{
 
 void actuate_forward(){
   digitalWrite(EN_PIN, LOW);   //Enabling driver
-  digitalWrite(DIR_PIN, HIGH); //Changes the rotations direction
+  digitalWrite(DIR_PIN, LOW); //Changes the rotations direction
   digitalWrite(STEP_PIN, HIGH);
   delayMicroseconds(motorSpeedLinearStage);
   digitalWrite(STEP_PIN, LOW);
@@ -86,7 +86,7 @@ void actuate_forward(){
 
 void actuate_backward(){
   digitalWrite(EN_PIN, LOW);   //Enabling driver
-  digitalWrite(DIR_PIN, LOW); //Changes the rotations direction
+  digitalWrite(DIR_PIN, HIGH); //Changes the rotations direction
   digitalWrite(STEP_PIN, HIGH);
   delayMicroseconds(motorSpeedLinearStage);
   digitalWrite(STEP_PIN, LOW);
