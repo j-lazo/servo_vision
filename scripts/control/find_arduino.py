@@ -13,7 +13,7 @@ def find_arduino():
     if os_name == 'Windows':
 
         ports = [p.device for p in serial.tools.list_ports.comports()
-                 if 'Arduino' in p.description]
+                 if 'Arduino' in p.description or 'CH340' in p.description]
 
         if not ports:
             raise IOError("No Arduino found")
