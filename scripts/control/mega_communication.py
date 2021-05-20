@@ -1,6 +1,7 @@
 import serial
 from time import sleep
 import random
+import find_arduino
 # def serial_initialization(arduino_com_port_1='COM4', arduino_com_port_2='COM12', arduino_com_port_3='COM6'):
 #     arduino_port_1 = serial.Serial(arduino_com_port_1, 115200, writeTimeout=0)  # port 1 is for the upper motor
 #     arduino_port_2 = serial.Serial(arduino_com_port_2, 115200, writeTimeout=0)  # port 2 is for the side motor
@@ -49,7 +50,9 @@ def serial_actuate(upper_joint_variable, side_joint_variable, stepper_joint_vari
 
 
 def main():
-    arduino_port_1 = serial_initialization()
+
+    arduino_port_1 = serial_initialization(str(find_arduino().port))
+
     while True:
         print(serial_request(arduino_port_1))
         sleep(1)
