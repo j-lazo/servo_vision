@@ -13,29 +13,97 @@ from time import sleep
 from computer_vision.calibration import detect_circle
 from control import general_control_functions as gcf
 import random
+import tensorflow as tf
+from computer_vision import general_funcions as cvf
 import datetime
+import time
+
+def test_lumen_detection():
 
 
-def test_vision_control(detect_scenario='circle', abs_delta=300):
+def test_vision_control(detect_scenario='lumen_detection', abs_delta=300):
 
     cap = cv2.VideoCapture(0)
     port_arduino = find_arduino.find_arduino()
     print('Arduino detected at:', port_arduino)
     arduino_port = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
-
     current_x = 0
     current_y = 0
     current_z = 0
 
-    while cap.isOpened():
+    if detect_scenario == 'lumen_detection':
+        model = tf.keras.models.load_model(name_model,
+                                           custom_objects={'loss': cvf.dice_coef_loss},
+                                           compile=False)
+        frame_rate = 60
+        point_x, point_y = 0, 0
 
-        ret, frame = cap.read()
-        if ret is True:
-            h, w, d = np.shape(frame)
-            cx = h/2
-            cy = w/2
+        while cap.isOpened():
+            prev = 0
+            ret, frame = cap.read()
+            init_time = datetime.datetime()
+            time_elapsed = time.time() - prev
+            if ret is True:
+                h, w, d = np.shape(frame)
+                cx = h / 2
+                cy = w / 2
+                # frame = cv2.flip(frame, 0)
+                if time_elapsed > 1. / frame_rate:
+                    reshaped = cv2.resize(frame, (256, 256), interpolation=cv2.INTER_AREA)
+                    resized = cv2.blur(reshaped, (7, 7)) / 255
+                    mask = cvf.predict_mask(model, resized)
+                    resized_2 = cv2.resize(reshaped, (300, 300), interpolation=cv2.INTER_AREA)
+                    w, h, d = np.shape(resized_2)
+                    previous_point_x = point_x
+                    previous_point_y = point_y
+                    point_x, point_y = cvf.detect_dark_region(mask, resized_2)
+                    if point_x != 'nAN':
+                        cv2.circle(resized_2, (int(point_x), int(point_y)), 45, (0, 0, 255), 2)
+                    if point_y != 'nAN':
+                        cv2.circle(resized_2, (int(point_x), int(point_y)), 25, (0, 0, 255), 2)
 
-            if detect_scenario == 'circle':
+                    if point_x == 'nAN':
+                        point_x = previous_point_x
+                    if point_y == 'nAN':
+                        point_y = previous_point_y
+
+                    cv2.line(resized_2, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
+                    cv2.circle(resized_2, (int(w / 2), int(h / 2)), 3, (0, 0, 255), -1)
+                    cv2.imshow('frame', resized_2)
+                    #print(point_x, point_y, 1 / (datetime.datetime() - init_time))
+                    delta_x = point_x - cx
+                    delta_y = point_y - cy
+                    new_position = gcf.naive_control(current_x, current_y, current_z,
+                                                     delta_x, delta_y, abs_delta)
+
+                    new_x = new_position[0]
+                    new_y = new_position[1]
+                    new_z = new_position[2]
+                    print(mc.serial_actuate(a, b, c, arduino_port))
+
+
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+            else:
+                break
+
+        # Release everything if job is finished
+        cap.release()
+        cv2.destroyAllWindows()
+
+        frame_rate = 60
+        point_x, point_y = 0, 0
+
+    elif detect_scenario == 'circle':
+
+        while cap.isOpened():
+
+            ret, frame = cap.read()
+            if ret is True:
+                h, w, d = np.shape(frame)
+                cx = h/2
+                cy = w/2
+
                 output, points = detect_circle.detect_circle(frame)
                 cv2.imshow("output", output)
                 delta_x = points[0] - cx
@@ -48,17 +116,15 @@ def test_vision_control(detect_scenario='circle', abs_delta=300):
                 new_z = new_position[2]
                 print(mc.serial_actuate(a, b, c, arduino_port))
 
-            elif detect_scenario == 'lumen':
-                #sleep(0.5)
+            else:
+                cv2.imshow('test', frame)
 
-        else:
-            cv2.imshow('test', frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
-    mc.serial_actuate(0, 0, 0, arduino_port)
-    cap.release()
-    cv2.destroyAllWindows()
+        mc.serial_actuate(0, 0, 0, arduino_port)
+        cap.release()
+        cv2.destroyAllWindows()
 
 
 def test_input_arduino():
