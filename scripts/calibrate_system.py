@@ -10,7 +10,55 @@ import computer_vision.calibration.run_calibration as cal
 from control import mega_communication as mc
 from control import find_arduino
 from time import sleep
+from computer_vision.calibration import detect_circle
+from control import general_control_functions as gcf
 import random
+import datetime
+
+
+def test_vision_control(detect_scenario='circle', abs_delta=300):
+
+    cap = cv2.VideoCapture(0)
+    port_arduino = find_arduino.find_arduino()
+    print('Arduino detected at:', port_arduino)
+    arduino_port = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+
+    current_x = 0
+    current_y = 0
+    current_z = 0
+
+    while cap.isOpened():
+
+        ret, frame = cap.read()
+        if ret is True:
+            h, w, d = np.shape(frame)
+            cx = h/2
+            cy = w/2
+
+            if detect_scenario == 'circle':
+                output, points = detect_circle.detect_circle(frame)
+                cv2.imshow("output", output)
+                delta_x = points[0] - cx
+                delta_y = points[1] - cy
+                new_position = gcf.naive_control(current_x, current_y, current_z,
+                                                 delta_x, delta_y, abs_delta)
+
+                new_x = new_position[0]
+                new_y = new_position[1]
+                new_z = new_position[2]
+                print(mc.serial_actuate(a, b, c, arduino_port))
+
+            elif detect_scenario == 'lumen':
+                #sleep(0.5)
+
+        else:
+            cv2.imshow('test', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    mc.serial_actuate(0, 0, 0, arduino_port)
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 def test_input_arduino():
@@ -20,7 +68,7 @@ def test_input_arduino():
 
 def test_control():
 
-    predefined_joints_values = [[7, 4, 0],
+    predefined_joints_values_cali = [[7, 4, 0],
                                 [-6, -2, 0],
                                 [3, 2, 0],
                                 [-8, -4, 0],
@@ -40,20 +88,36 @@ def test_control():
                                 [8, 13, 2],
                                 [-6, -6, 2],
                                 [-8, 8, 2],
-                                [2, -2, 2]]
+                                [2, -2, 2],
+                                [0, 0, 0]]
+
+    predefined_joints_values = [[0, 0, 0],
+                                [0, 0, 2],
+                                [0, 0, 0],
+                                [0, 0, -2],
+                                [0, 0, 0],
+                                [20, 0, 0],
+                                [-20, 0, 0],
+                                [0, 0, 0],
+                                [0, 20, 0],
+                                [0, -20, 0],
+                                [0, 0, 0]]
 
     port_arduino = find_arduino.find_arduino()
     print('Arduino detected at:', port_arduino)
     arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+    c = 100000
+    for variable in predefined_joints_values_cali:
+        #a = joints_values[0]
+        #b = joints_values[1]
+        #c = joints_values[2]*5
+        a = random.randint(-5, 5)
+        b = random.randint(-5, 5)
+        c = -c
+        print(mc.serial_actuate(0, 0, c, arduino_port_1))
+        sleep(0.9)
 
-    for joints_values in predefined_joints_values:
-        print(mc.serial_request(arduino_port_1))
-        a = joints_values[0]
-        b = joints_values[1]
-        c = joints_values[2]*5
-        print(mc.serial_actuate(a, b, c, arduino_port_1))
-        sleep(2)
-
+    print(mc.serial_actuate(0, 0, 0, arduino_port_1))
 
 def test_actuators():
     # TODO: Update to Mega code, use serial_request()
@@ -308,6 +372,8 @@ if __name__ == "__main__":
         test_control()
     elif args.command == 'test_input_arduino':
         test_input_arduino()
+    elif args.command == 'test_vision_control':
+        test_vision_control()
     else:
         raise Exception("The command written was not found")
 

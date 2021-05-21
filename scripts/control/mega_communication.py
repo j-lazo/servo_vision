@@ -1,7 +1,8 @@
 import serial
 from time import sleep
 import random
-from find_arduino import find_arduino
+from control.find_arduino import find_arduino
+#from find_arduino import find_arduino
 # def serial_initialization(arduino_com_port_1='COM4', arduino_com_port_2='COM12', arduino_com_port_3='COM6'):
 #     arduino_port_1 = serial.Serial(arduino_com_port_1, 115200, writeTimeout=0)  # port 1 is for the upper motor
 #     arduino_port_2 = serial.Serial(arduino_com_port_2, 115200, writeTimeout=0)  # port 2 is for the side motor
@@ -36,11 +37,9 @@ def serial_request(arduino_port_1):
     #print(receive_data_upper.decode("utf-8"), receive_data_side, type(receive_data_upper), type(receive_data_upper.decode()), receive_data_stepper)
 
     #clear unwanted letters:
-    receive_data_upper = receive_data_upper.replace("r", "")
-    receive_data_side = receive_data_side.replace("r", "")
-    receive_data_stepper = receive_data_stepper.replace("r", "")
-
-    print([receive_data_upper, receive_data_side, receive_data_stepper])
+    receive_data_upper = receive_data_upper.decode("utf-8").replace("r", "")
+    receive_data_side = receive_data_side.decode("utf-8").replace("r", "")
+    receive_data_stepper = receive_data_stepper.decode("utf-8").replace("r", "")
 
     current_act_joint_variable = [float(receive_data_upper), float(receive_data_side), float(receive_data_stepper)]
 
