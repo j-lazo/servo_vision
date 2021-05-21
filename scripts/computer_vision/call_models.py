@@ -8,10 +8,6 @@ import general_functions as cvf
 
 def main():
     cap = cv2.VideoCapture(0)
-    # Define the codec and create VideoWriter object
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
-
     #project_folder = '/home/nearlab/Jorge/current_work/' \
     #                 'lumen_segmentation/data/lumen_data/'
     project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
@@ -72,7 +68,6 @@ def main():
 
     # Release everything if job is finished
     cap.release()
-    out.release()
     cv2.destroyAllWindows()
 
 
