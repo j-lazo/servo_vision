@@ -19,6 +19,20 @@ import datetime
 import time
 
 
+def test_home_coming():
+
+    port_arduino = find_arduino.find_arduino()
+    print('Arduino detected at:', port_arduino)
+    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+
+    while True:
+        x = int(input("x: "))
+        y = int(input("y: "))
+        z = int(input("z: "))
+
+        mc.serial_actuate(x, y, z, arduino_port_1)
+        print('updated')
+
 def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
                      'phantom_lumen/', folder_name='ResUnet_lr_0.0001_bs_16_rgb_19_05_2021_17_07'):
 
@@ -35,13 +49,15 @@ def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_
     frame_rate = 60
     point_x, point_y = 0, 0
 
+    counter = 0
     while cap.isOpened():
         prev = 0
+        counter = counter + 1
         ret, frame = cap.read()
         init_time = time.time()
         time_elapsed = time.time() - prev
 
-        if ret is True:
+        if ret is True and counter > 10:
 
             if time_elapsed > 1. / frame_rate:
                 reshaped = cv2.resize(frame, (256, 256), interpolation=cv2.INTER_AREA)
@@ -76,7 +92,7 @@ def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_
     cv2.destroyAllWindows()
 
 
-def test_vision_control(detect_scenario='circle', abs_delta=70):
+def test_vision_control(detect_scenario='lumen', abs_delta=70):
 
     cap = cv2.VideoCapture(0)
     port_arduino = find_arduino.find_arduino()
@@ -87,36 +103,106 @@ def test_vision_control(detect_scenario='circle', abs_delta=70):
     current_act_y = 0
     current_act_z = 0
 
+    if detect_scenario == 'lumen':
 
+        project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                         'phantom_lumen/'
 
-    while cap.isOpened():
+        folder_name = 'ResUnet_lr_0.0001_bs_16_rgb_19_05_2021_17_07'
+        new_results_id = folder_name
+        results_directory = ''.join([project_folder, 'results/ResUnet/',
+                                     new_results_id, '/'])
+        name_model = ''.join([results_directory, new_results_id, '_model.h5'])
+        print('NAME MODEL')
+        print(name_model)
+        model = tf.keras.models.load_model(name_model,
+                                           custom_objects={'loss': cvf.dice_coef_loss},
+                                           compile=False)
+        frame_rate = 60
+        point_x, point_y = 0, 0
 
-        ret, frame = cap.read()
-        if ret is True:
-            h, w, d = np.shape(frame)
-            output, points = detect_circle.detect_circle(frame, abs_delta)
-            cv2.imshow("output", output)
-            # the output from detect circles is in the img ref points with 0,0 in the upper left corner
-            print(points[0] - current_act_x)
-            print(points[1] - current_act_y)
-            new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
-                                             points[0], points[1], (w, h), abs_delta)
+        while cap.isOpened():
+            prev = 0
+            ret, frame = cap.read()
+            init_time = time.time()
+            time_elapsed = time.time() - prev
 
-            mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
-            current_act_x = new_position[0]
-            current_act_y = new_position[1]
-            current_act_z = new_position[2]
-            sleep(0.1)
-        else:
-            cv2.imshow('test', frame)
+            if ret is True:
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+                if time_elapsed > 1. / frame_rate:
+                    reshaped = cv2.resize(frame, (256, 256), interpolation=cv2.INTER_AREA)
+                    resized = cv2.blur(reshaped, (7, 7)) / 255
+                    mask = cvf.predict_mask(model, resized)
+                    resized_2 = cv2.resize(reshaped, (300, 300), interpolation=cv2.INTER_AREA)
+                    w, h, d = np.shape(resized_2)
+                    previous_point_x = point_x
+                    previous_point_y = point_y
+                    point_x, point_y = cvf.detect_dark_region(mask, resized_2)
+                    if point_x != 'nAN':
+                        cv2.circle(resized_2, (int(point_x), int(point_y)), 45, (0, 0, 255), 2)
+                    if point_y != 'nAN':
+                        cv2.circle(resized_2, (int(point_x), int(point_y)), 25, (0, 0, 255), 2)
+
+                    if point_x == 'nAN':
+                        point_x = previous_point_x
+                    if point_y == 'nAN':
+                        point_y = previous_point_y
+
+                    new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
+                                                     point_x, point_y, (w, h), abs_delta)
+
+                    mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
+                    current_act_x = new_position[0]
+                    current_act_y = new_position[1]
+                    current_act_z = new_position[2]
+                    #sleep(0.01)
+                    cv2.line(resized_2, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
+                    cv2.circle(resized_2, (int(w / 2), int(h / 2)), 3, (0, 0, 255), -1)
+                    cv2.circle(resized_2, (int(w / 2), int(h / 2)), abs_delta, (0, 255, 255), 2)
+                    cv2.imshow('frame', resized_2)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        sleep(0.5)
+                        mc.serial_actuate(0, 0, 0, arduino_port)
+                        break
+            else:
+                break
+
+        # Release everything if job is finished
+        #mc.serial_actuate(0, 0, 0, arduino_port)
+        cap.release()
+        cv2.destroyAllWindows()
+
+    elif detect_scenario == 'circle':
+
+        while cap.isOpened():
+
+            ret, frame = cap.read()
+            if ret is True:
+                h, w, d = np.shape(frame)
+                output, points = detect_circle.detect_circle(frame, abs_delta)
+                cv2.imshow("output", output)
+                # the output from detect circles is in the img ref points with 0,0 in the upper left corner
+                print(points[0] - current_act_x)
+                print(points[1] - current_act_y)
+                new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
+                                                 points[0], points[1], (w, h), abs_delta)
+
+                mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
+                current_act_x = new_position[0]
+                current_act_y = new_position[1]
+                current_act_z = new_position[2]
+                sleep(0.1)
+            else:
+                cv2.imshow('test', frame)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        #mc.serial_actuate(0, 0, 0, arduino_port)
+        cap.release()
+        cv2.destroyAllWindows()
 
     mc.serial_actuate(0, 0, 0, arduino_port)
-    cap.release()
-    cv2.destroyAllWindows()
-
 
 def test_input_arduino():
     port_arduino = find_arduino.find_arduino()
@@ -433,6 +519,8 @@ if __name__ == "__main__":
         test_vision_control()
     elif args.command == 'test_lumen_detection':
         test_lumen_detection()
+    elif args.command == 'home_coming':
+        test_home_coming()
 
     else:
         raise Exception("The command written was not found")
