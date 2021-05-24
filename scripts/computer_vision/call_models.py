@@ -36,7 +36,7 @@ def main():
         ret, frame = cap.read()
         init_time = time.time()
         time_elapsed = time.time() - prev
-        if ret == True:
+        if ret is True:
             #frame = cv2.flip(frame, 0)
             if time_elapsed > 1. / frame_rate:
                 reshaped = cv2.resize(frame, (256, 256), interpolation=cv2.INTER_AREA)
