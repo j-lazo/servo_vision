@@ -9,18 +9,20 @@ def tarnsform_to_img_space(point_x, point_y, shape_img):
 def naive_control(current_x, current_y, current_z, target_x, target_y,
                   img_shape, absolute_delta, user_define_step=0.003):
     tranformed_x, tranformed_y = tarnsform_to_img_space(target_x, target_y, img_shape)
-    #current_x, current_y = tarnsform_to_img_space(current_x, current_y, img_shape)
     tranformed_x = tranformed_x * -1
-    #current_x = current_x * -1
     target_vector = [current_x, current_y, current_z]
 
     if (tranformed_x ** 2 + tranformed_y ** 2) > absolute_delta ** 2:
+        print('updating x, y')
         target_vector[0] = current_x + tranformed_x * user_define_step
         target_vector[1] = current_y + tranformed_y * user_define_step
-        target_vector[2] = 0
+        target_vector[2] = current_z
         # target_vector[2] = current_z + delta_z * user_define_step
 
     else:
-        target_vector[2] = 0
+        print('forward')
+        target_vector[0] = current_x
+        target_vector[1] = current_y
+        target_vector[2] = current_z + 0.5
 
     return target_vector
