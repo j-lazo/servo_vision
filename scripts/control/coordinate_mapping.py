@@ -19,7 +19,7 @@ def config_to_actuate(x, *config_state):
 
 
 def actuate_to_motor(x, *act_state):
-    radius_motor = 3
+    radius_motor = 5
     thread_linear = 5
     one_rev_encoder_reading = 16000
     upper_length, side_length, stepper_length = act_state
@@ -31,8 +31,17 @@ def calculate_motor_actuation(target_in_camera):
     target_in_camera = tuple(target_in_camera)
     config_state = fsolve(world_to_config, [0.2, 0.2, 70.0], args=target_in_camera)
     config_state = tuple(config_state)
-    act_state = fsolve(config_to_actuate, [0.0, 0.0, 0.0], args=config_state)
+    act_state = fsolve(config_to_actuate, [0.1, 0.1, 1.0], args=config_state)
     act_state = tuple(act_state)
-    motor_revolution = fsolve(actuate_to_motor, [0.0, 0.0, 0.0], args=act_state)
+    motor_revolution = fsolve(actuate_to_motor, [0.1, 0.1, 1], args=act_state)
 
     return motor_revolution
+
+
+def main():
+    test_number = calculate_motor_actuation((30, 30, 100))
+    print(test_number)
+
+
+if __name__ == '__main__':
+    main()
