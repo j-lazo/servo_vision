@@ -184,14 +184,20 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                 # the output from detect circles is in the img ref points with 0,0 in the upper left corner
                 print(points[0] - current_act_x)
                 print(points[1] - current_act_y)
-                new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
-                                                 points[0], points[1], (w, h), abs_delta)
+                # new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
+                #                                  points[0], points[1], (w, h), abs_delta)
+                #
+                # mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
+                # current_act_x = new_position[0]
+                # current_act_y = new_position[1]
+                # current_act_z = new_position[2]
+                # sleep(0.1)
 
-                mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
-                current_act_x = new_position[0]
-                current_act_y = new_position[1]
-                current_act_z = new_position[2]
-                sleep(0.1)
+                new_velocity = gcf.less_naive_control(current_act_z, points[0], points[1],
+                                                      (w, h), abs_delta)
+                mc.serial_actuate(new_velocity[0], new_velocity[1], new_velocity[2], arduino_port)
+                current_act_z = new_velocity[2]
+
             else:
                 cv2.imshow('test', frame)
 
