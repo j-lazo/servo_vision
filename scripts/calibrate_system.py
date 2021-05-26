@@ -95,6 +95,8 @@ def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_
 def test_vision_control(detect_scenario='lumen', abs_delta=70):
 
     cap = cv2.VideoCapture(0)
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
     port_arduino = find_arduino.find_arduino()
     print('Arduino detected at:', port_arduino)
     arduino_port = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
@@ -148,18 +150,28 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                     if point_y == 'nAN':
                         point_y = previous_point_y
 
-                    new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
-                                                     point_x, point_y, (w, h), abs_delta)
+                    #new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
+                    #                                 point_x, point_y, (w, h), abs_delta)
 
-                    mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
-                    current_act_x = new_position[0]
-                    current_act_y = new_position[1]
-                    current_act_z = new_position[2]
+                    #mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
+                    #current_act_x = new_position[0]
+                    #current_act_y = new_position[1]
+                    #current_act_z = new_position[2]
+
+                    new_velocity = gcf.less_naive_control(current_act_z, point_x, point_y,
+                                                          (w, h), abs_delta)
+                    mc.serial_actuate(new_velocity[0], new_velocity[1], new_velocity[2], arduino_port)
+                    current_act_z = new_velocity[2]
+
                     #sleep(0.01)
                     cv2.line(resized_2, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
-                    cv2.circle(resized_2, (int(w / 2), int(h / 2)), 3, (0, 0, 255), -1)
-                    cv2.circle(resized_2, (int(w / 2), int(h / 2)), abs_delta, (0, 255, 255), 2)
+                    #
+                    cv2.circle(resized_2, (int(w / 2), int(h / 2)), 3, (0, 255, 255), -1)
+                    #cv2.circle(resized_2, (int(point_x), int(point_y)), 20, (0, 0, 255), 2)
+                    # yellow circle
+                    #cv2.circle(resized_2, (int(w / 2), int(h / 2)), abs_delta, (0, 255, 255), 2)
                     cv2.imshow('frame', resized_2)
+                    out.write(resized_2)
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         sleep(0.5)
                         mc.serial_actuate(0, 0, 0, arduino_port)
@@ -170,6 +182,7 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
         # Release everything if job is finished
         #mc.serial_actuate(0, 0, 0, arduino_port)
         cap.release()
+        out.release()
         cv2.destroyAllWindows()
 
     elif detect_scenario == 'circle':
@@ -209,6 +222,7 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
         cv2.destroyAllWindows()
 
     mc.serial_actuate(0, 0, 0, arduino_port)
+
 
 def test_input_arduino():
     port_arduino = find_arduino.find_arduino()
@@ -268,6 +282,7 @@ def test_control():
 
     print(mc.serial_actuate(0, 0, 0, arduino_port_1))
 
+
 def test_actuators():
     # TODO: Update to Mega code, use serial_request()
     arduino_port_1, arduino_port_2, arduino_port_3 = pysr.initialize_ports()
@@ -323,8 +338,9 @@ def test_camera():
         if not ret:
             print('Cannot recieve frame (stream end?). Exiting')
             break
-
+        w, h, d = np.shape(frame)
         # The original input frame is shown in the window
+        cv2.line(frame, (0, int(w/2)), (h, int(w/2)), (0, 255, 255), 3)
         cv2.imshow('Original', frame)
         # Wait for 'a' key to stop the program
         key = cv2.waitKey(1) & 0xFF
