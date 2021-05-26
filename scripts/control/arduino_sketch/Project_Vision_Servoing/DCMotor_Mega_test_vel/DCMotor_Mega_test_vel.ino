@@ -138,10 +138,23 @@ void setup() {
   digitalWrite(DIR_FLAG2,LOW);
   //wait for serial setup.
   delay(1000);
+
+  //Extra LED for warning:
+  pinMode(49, OUTPUT);
+
+
 }
 
 void loop() {
 //  put your main code here, to run repeatedly:
+
+//////////////////////////////////////////warning flag/////////////////////////////////////////////////////////
+
+if (encoderValue_upper || encoderValue_side > 2400){digitalWrite(49, HIGH);}
+else if (encoderValue_upper || encoderValue_side < -2400){digitalWrite(49, HIGH);}
+else{digitalWrite(49, LOW);}
+
+
 ////////////////////////////////////////////Read from Serial////////////////////////////////////////////////
   int seperate_flag = 0;
   int read_flag = 0;
@@ -306,22 +319,22 @@ void updateEncoder_stepper(){
 
 void pwmOut(int out, int motor_number) {   // motor number 1 == upper // 2 == side
   if (motor_number == 5){                        
-    if (out > 0) {                         // if REV > encoderValue motor move in forward direction.    
+    if (out > 0 && encoderValue_upper < 2400) {                         // if REV > encoderValue motor move in forward direction.    
       analogWrite(UpperMotEnable, out);         // Enabling motor enable pin to reach the desire angle
       forward(motor_number);                           // calling motor to move forward
     }
-    else {
+    else if(out < 0 && encoderValue_upper > -2400){
       analogWrite(UpperMotEnable, abs(out));          // if REV < encoderValue motor move in forward direction.                      
       reverse(motor_number);                            // calling motor to move reverse
     }
 //  receiveData=""; // Cleaning User input, ready for new Input
   }
   else if(motor_number == 8){
-    if (out > 0) {                         // if REV > encoderValue motor move in forward direction.    
+    if (out > 0 && encoderValue_side < 2400) {                         // if REV > encoderValue motor move in forward direction.    
       analogWrite(SideMotEnable, out);         // Enabling motor enable pin to reach the desire angle
       forward(motor_number);                           // calling motor to move forward
     }
-    else {
+    else if (out < 0 && encoderValue_side > -2400){
       analogWrite(SideMotEnable, abs(out));          // if REV < encoderValue motor move in forward direction.                      
       reverse(motor_number);                            // calling motor to move reverse
     }
