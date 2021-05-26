@@ -123,6 +123,10 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
         frame_rate = 60
         point_x, point_y = 0, 0
 
+        #initialize the Jacobian matrix, k = 0
+        new_jacobian = np.array([[1, 0], [0, 1]])
+        flag_loop = 0:
+
         while cap.isOpened():
             prev = 0
             ret, frame = cap.read()
@@ -157,11 +161,20 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                     #current_act_x = new_position[0]
                     #current_act_y = new_position[1]
                     #current_act_z = new_position[2]
-
-                    new_velocity = gcf.less_naive_control(current_act_z, point_x, point_y,
-                                                          (w, h), abs_delta)
+                    #######original less naive control block############
+                    # new_velocity = gcf.less_naive_control(current_act_z, point_x, point_y,
+                    #                                       (w, h), abs_delta)
+                    # mc.serial_actuate(new_velocity[0], new_velocity[1], new_velocity[2], arduino_port)
+                    # current_act_z = new_velocity[2]
+                    #######\end original less naive control block############
+                    #######jacobian_correction_control
+                    if flag_loop == 0:
+                        new_velocity = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
+                        flag_loop = 1
+                    else:
+                        new_jacobian = gcf.update_jacobian(new_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y, beta)
+                        new_velocity = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
                     mc.serial_actuate(new_velocity[0], new_velocity[1], new_velocity[2], arduino_port)
-                    current_act_z = new_velocity[2]
 
                     #sleep(0.01)
                     cv2.line(resized_2, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)

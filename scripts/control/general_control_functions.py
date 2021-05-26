@@ -65,25 +65,22 @@ def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, abso
     transformed_x, transformed_y = tarnsform_to_img_space(target_x, target_y, img_shape)
     transformed_x = transformed_x * -1
     target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
-
     target_vector = np.array([[transformed_x], [transformed_y]])
-    inverse_jacobian = np.linalg.inv(new_jacobian())
-    actuate_vector = np.matul(inverse_jacobian, target_vector)
+    inverse_jacobian = np.linalg.inv(new_jacobian)
+    actuate_vector = np.matul(inverse_jacobian, target_vector).tolist()  # make it back a list.
 
     if target_distance > absolute_delta:
         actuate_vector_z = [0]
     else:
         actuate_vector_z = [1]
+    return actuate_vector + actuate_vector_z  # Here we return a list!
 
-    return actuate_vector + actuate_vector_z
 
-
-def update_jacobian(current_jacobian, delta_q, delta_actual_displacement, beta):
+def update_jacobian(current_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y, beta=0.05):
     delta_q = np.array(delta_q)
-    delta_actual_displacement = np.array(delta_actual_displacement)
-
+    delta_actual_displacement = np.array([[point_x - previous_point_x], [point_y - previous_point_y]])
     new_jacobian = current_jacobian + beta * (
-                delta_actual_displacement - current_jacobian * delta_q) * delta_q.transpose \
-                   / (delta_q.transpose() * delta_q)
+            delta_actual_displacement - current_jacobian * delta_q) * delta_q.transpose() / (delta_q.transpose() *
+                                                                                             delta_q)
 
     return new_jacobian
