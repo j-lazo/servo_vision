@@ -131,7 +131,7 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
         point_x, point_y = 0, 0
 
         #initialize the Jacobian matrix, k = 0
-        new_jacobian = np.array([[1, 0], [0, 1]])
+        new_jacobian = np.array([[0.625, -0.18], [0.08, 1.0]])
         old_position = [0, 0, 0]
         flag_loop = 0
         while cap.isOpened():
@@ -177,18 +177,21 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                     #######jacobian_correction_control
                     if flag_loop == 0:
                         delta_time = float(time.time() - init_time)
-                        new_position = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
+                        current_act_joint_variable = mc.serial_request(arduino_port)
+                        new_position = gcf.jacobian_correcion_velocity_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
                         flag_loop = 1
                     else:
-                        current_act_joint_variable = mc.serial_request(arduino_port)
+
                         delta_q = [0, 0]
-                        delta_q[0] = new_position[0] - old_position[0]
-                        delta_q[1] = new_position[1] - old_position[1]
                         delta_time = float(time.time() - init_time)
-                        new_jacobian = gcf.update_jacobian(new_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y)
+                        current_act_joint_variable = mc.serial_request(arduino_port)
+                        delta_q[0] = current_act_joint_variable[0] - old_act_joint_variable[0]
+                        delta_q[1] = current_act_joint_variable[1] - old_act_joint_variable[1]
+                        new_jacobian = gcf.update_jacobian(new_jacobian, delta_time, delta_q, point_x, point_y, previous_point_x, previous_point_y)
                         new_position = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
                     mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
                     old_position = new_position
+                    old_act_joint_variable = current_act_joint_variable
 
                     #sleep(0.01)
                     cv2.line(resized_2, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
