@@ -79,16 +79,21 @@ def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, abso
 def update_jacobian(current_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y, beta=0.05):
     delta_q = np.array(delta_q)
     delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y])
-    print ("current_jacobian:", current_jacobian)
-    print ("delta_actual_displacement:", delta_actual_displacement)
-    print ("delta_q:", delta_q)
-    new_jacobian = current_jacobian + beta * (
-            delta_actual_displacement - np.matmul(np.matmul(current_jacobian, delta_q), delta_q) / np.dot(delta_q,
-                                                                                                          delta_q))
-
-    ###########dot mult implementation!?!?!
+    # print ("current_jacobian:", current_jacobian)
+    # print ("delta_actual_displacement:", delta_actual_displacement)
+    # print ("delta_q:", delta_q)
+    # print ("JkQk:", np.matmul(current_jacobian, delta_q))
+    # print ("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
+    # print ("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
+    # print ("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
+    # a = np.array([1, 2])
+    # b = np.array([3, 4])
+    # print ("a outer b:", np.outer(a, b))
+    new_jacobian = current_jacobian + beta * np.outer(
+            delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q, delta_q)
 
     return new_jacobian
+
 
 
 def main():
