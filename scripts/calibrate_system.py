@@ -125,7 +125,8 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
 
         #initialize the Jacobian matrix, k = 0
         new_jacobian = np.array([[1, 0], [0, 1]])
-        flag_loop = 0:
+        old_position = [0, 0, 0]
+        flag_loop = 0
 
         while cap.isOpened():
             prev = 0
@@ -169,12 +170,17 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                     #######\end original less naive control block############
                     #######jacobian_correction_control
                     if flag_loop == 0:
-                        new_velocity = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
+                        new_position = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
                         flag_loop = 1
                     else:
-                        new_jacobian = gcf.update_jacobian(new_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y, beta)
-                        new_velocity = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
-                    mc.serial_actuate(new_velocity[0], new_velocity[1], new_velocity[2], arduino_port)
+                        current_act_joint_variable = mc.serial_request(arduino_port)
+                        delta_q = [0, 0]
+                        delta_q[0] = new_position[0] - old_position[0]
+                        delta_q[1] = new_position[1] - old_position[1]
+                        new_jacobian = gcf.update_jacobian(new_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y)
+                        new_position = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
+                    mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
+                    old_position = new_position
 
                     #sleep(0.01)
                     cv2.line(resized_2, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
@@ -199,6 +205,38 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
         cv2.destroyAllWindows()
 
     elif detect_scenario == 'circle':
+
+        while cap.isOpened():
+
+            ret, frame = cap.read()
+            if ret is True:
+                h, w, d = np.shape(frame)
+                output, points = detect_circle.detect_circle(frame, abs_delta)
+                cv2.imshow("output", output)
+                # the output from detect circles is in the img ref points with 0,0 in the upper left corner
+                print(points[0] - current_act_x)
+                print(points[1] - current_act_y)
+                # new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
+                #                                  points[0], points[1], (w, h), abs_delta)
+                #
+                # mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
+                # current_act_x = new_position[0]
+                # current_act_y = new_position[1]
+                # current_act_z = new_position[2]
+                # sleep(0.1)
+
+                new_velocity = gcf.less_naive_control(current_act_z, points[0], points[1],
+                                                      (w, h), abs_delta)
+                mc.serial_actuate(new_velocity[0], new_velocity[1], new_velocity[2], arduino_port)
+                current_act_z = new_velocity[2]
+
+            else:
+                cv2.imshow('test', frame)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    elif detect_scenario == 'jacobian_control':
 
         while cap.isOpened():
 
