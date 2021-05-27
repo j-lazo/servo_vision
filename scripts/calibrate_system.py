@@ -32,16 +32,18 @@ def test_home_coming():
     arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
 
     while True:
-        x = int(input("x: "))
-        y = int(input("y: "))
-        z = int(input("z: "))
+        x = float(input("x: "))
+        y = float(input("y: "))
+        z = float(input("z: "))
 
         mc.serial_actuate(x, y, z, arduino_port_1)
         print('updated')
 
 
 def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                     'phantom_lumen/', folder_name='ResUnet_lr_0.0001_bs_16_rgb_19_05_2021_17_07'):
+                     'phantom_lumen/', folder_name='ResUnet_lr_0.0001_bs_16_rgb_19_05_2021_17_07', type_data='rgb'):
+
+    type_data = 'npy'
 
     cap = cv2.VideoCapture(0)
     new_results_id = folder_name
@@ -99,7 +101,7 @@ def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_
     cv2.destroyAllWindows()
 
 
-def test_vision_control(detect_scenario='lumen', abs_delta=70):
+def test_vision_control(detect_scenario='chessboard', abs_delta=70):
 
     cap = cv2.VideoCapture(0)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -178,7 +180,7 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                     if flag_loop == 0:
                         delta_time = float(time.time() - init_time)
                         current_act_joint_variable = mc.serial_request(arduino_port)
-                        new_position = gcf.jacobian_correcion_velocity_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
+                        new_position = gcf.jacobian_correction_velocity_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
                         flag_loop = 1
                     else:
 
@@ -188,14 +190,14 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                         delta_q[0] = current_act_joint_variable[0] - old_act_joint_variable[0]
                         delta_q[1] = current_act_joint_variable[1] - old_act_joint_variable[1]
                         new_jacobian = gcf.update_jacobian(new_jacobian, delta_time, delta_q, point_x, point_y, previous_point_x, previous_point_y)
-                        new_position = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
+                        new_position = gcf.jacobian_correction_velocity_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
+                        print(new_position)
                     mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
                     old_position = new_position
                     old_act_joint_variable = current_act_joint_variable
 
                     #sleep(0.01)
                     cv2.line(resized_2, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
-                    #
                     cv2.circle(resized_2, (int(w / 2), int(h / 2)), 3, (0, 255, 255), -1)
                     #cv2.circle(resized_2, (int(point_x), int(point_y)), 20, (0, 0, 255), 2)
                     # yellow circle
@@ -246,44 +248,69 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+    elif detect_scenario == 'chessboard':
 
-    elif detect_scenario == 'jacobian_control':
-
+        point_x, point_y = 0, 0
+        #initialize the Jacobian matrix, k = 0
+        new_jacobian = np.array([[0.625, -0.18], [0.08, 1.0]])
+        old_position = [0, 0, 0]
+        flag_loop = 0
         while cap.isOpened():
-
+            init_time = time.time()
             ret, frame = cap.read()
             if ret is True:
-                h, w, d = np.shape(frame)
-                output, points = detect_circle.detect_circle(frame, abs_delta)
-                cv2.imshow("output", output)
-                # the output from detect circles is in the img ref points with 0,0 in the upper left corner
-                print(points[0] - current_act_x)
-                print(points[1] - current_act_y)
-                # new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
-                #                                  points[0], points[1], (w, h), abs_delta)
-                #
-                # mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
-                # current_act_x = new_position[0]
-                # current_act_y = new_position[1]
-                # current_act_z = new_position[2]
-                # sleep(0.1)
+                previous_point_x = point_x
+                previous_point_y = point_y
+                # Converts to grayscale color space
+                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                w, h = np.shape(gray)
+                #print('target', point_x, point_y)
+                if flag_loop == 0:
+                    delta_time = float(time.time() - init_time)
+                    current_act_joint_variable = mc.serial_request(arduino_port)
+                    new_position = gcf.jacobian_correction_velocity_control(new_jacobian, point_x, point_y, (w, h),
+                                                                            abs_delta)
+                    flag_loop = 1
+                else:
 
-                new_velocity = gcf.less_naive_control(current_act_z, points[0], points[1],
-                                                      (w, h), abs_delta)
-                mc.serial_actuate(new_velocity[0], new_velocity[1], new_velocity[2], arduino_port)
-                current_act_z = new_velocity[2]
+                    delta_q = [0, 0]
+                    delta_time = float(time.time() - init_time)
+                    current_act_joint_variable = mc.serial_request(arduino_port)
+                    delta_q[0] = current_act_joint_variable[0] - old_act_joint_variable[0]
+                    delta_q[1] = current_act_joint_variable[1] - old_act_joint_variable[1]
+                    #new_jacobian = gcf.update_jacobian(new_jacobian, delta_time, delta_q, point_x, point_y,
+                    #                                   previous_point_x, previous_point_y)
+                    new_position = gcf.jacobian_correction_velocity_control(new_jacobian, point_x, point_y, (w, h),
+                                                                            abs_delta)
+                    print(new_position)
+                    mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
+                old_position = new_position
+                old_act_joint_variable = current_act_joint_variable
+                pattern_size = (7, 5)
+                found, corners = cf.find_corners(gray, pattern_size)
+                draw_img = cf.draw_corners(gray, corners, pattern_size)
+                resized = cv2.resize(draw_img, (450, 300))
+                # The original input frame is shown in the window
+                cv2.imshow('Output Video', resized)
+
+                points_x = []
+                points_y = []
+                if found:
+                    for x in range(np.shape(corners)[0]):
+                        points_x.append(corners[x][0][0])
+                        points_y.append(corners[x][0][1])
+
+                    if points_x:
+                        point_x = points_x[5]
+                    if points_y:
+                        point_y = points_y[5]
 
             else:
                 cv2.imshow('test', frame)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
+                mc.serial_actuate(0, 0, 0)
                 break
-
-        #mc.serial_actuate(0, 0, 0, arduino_port)
-        cap.release()
-        cv2.destroyAllWindows()
-
-    mc.serial_actuate(0, 0, 0, arduino_port)
 
 
 def test_input_arduino():
