@@ -76,7 +76,7 @@ def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, abso
     return actuate_vector + actuate_vector_z  # Here we return a list!
 
 
-def jocobian_correcion_velocity_control(new_jacobian, target_x, target_y, img_shape, absolute_delta,
+def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_shape, absolute_delta,
                                         user_define_step=1, delta_time=34):
     transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
     transformed_x = transformed_x * -1
