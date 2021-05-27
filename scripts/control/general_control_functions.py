@@ -2,7 +2,7 @@ import math
 import numpy as np
 
 
-def tarnsform_to_img_space(point_x, point_y, shape_img):
+def transform_to_img_space(point_x, point_y, shape_img):
     cx = shape_img[0] / 2
     cy = shape_img[1] / 2
     corrected_x = point_x - cx
@@ -12,7 +12,7 @@ def tarnsform_to_img_space(point_x, point_y, shape_img):
 
 def naive_control(current_x, current_y, current_z, target_x, target_y,
                   img_shape, absolute_delta, user_define_step=0.003):
-    tranformed_x, tranformed_y = tarnsform_to_img_space(target_x, target_y, img_shape)
+    tranformed_x, tranformed_y = transform_to_img_space(target_x, target_y, img_shape)
     tranformed_x = tranformed_x * -1
     target_vector = [current_x, current_y, current_z]
 
@@ -34,7 +34,7 @@ def naive_control(current_x, current_y, current_z, target_x, target_y,
 
 def less_naive_control(current_z, target_x, target_y,
                        img_shape, absolute_delta, user_define_step=0.003):
-    transformed_x, transformed_y = tarnsform_to_img_space(target_x, target_y, img_shape)
+    transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
     transformed_x = transformed_x * -1
     target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     target_vector = [0, 0, current_z]
@@ -62,7 +62,7 @@ def less_naive_control(current_z, target_x, target_y,
 
 
 def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, absolute_delta, user_define_step=1):
-    transformed_x, transformed_y = tarnsform_to_img_space(target_x, target_y, img_shape)
+    transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
     transformed_x = transformed_x * -1
     target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     target_vector = np.array([[transformed_x], [transformed_y]])
@@ -78,9 +78,28 @@ def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, abso
 
 def update_jacobian(current_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y, beta=0.05):
     delta_q = np.array(delta_q)
-    delta_actual_displacement = np.array([[point_x - previous_point_x], [point_y - previous_point_y]])
+    delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y])
+    print ("current_jacobian:", current_jacobian)
+    print ("delta_actual_displacement:", delta_actual_displacement)
+    print ("delta_q:", delta_q)
     new_jacobian = current_jacobian + beta * (
-            delta_actual_displacement - current_jacobian * delta_q) * delta_q.transpose() / (delta_q.transpose() *
-                                                                                             delta_q)
+            delta_actual_displacement - np.matmul(np.matmul(current_jacobian, delta_q), delta_q) / np.dot(delta_q,
+                                                                                                          delta_q))
+
+    ###########dot mult implementation!?!?!
 
     return new_jacobian
+
+
+def main():
+    jacobian = np.array([[1, 0], [0, 1]])
+    delta_q = [1, 0]
+    point_x, point_y, previous_point_x, previous_point_y = 1.0, 0.0, 3.0, 0.0
+    new_jacobian = update_jacobian(jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y, beta=1)
+    print ("old jacobian matrix:", jacobian, "and the new one!:", new_jacobian)
+
+    return 0
+
+
+if __name__ == "__main__":
+    main()
