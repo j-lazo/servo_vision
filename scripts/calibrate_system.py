@@ -19,6 +19,12 @@ import datetime
 import time
 
 
+def determine_q_function():
+    directory_data = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
+
+    cf.plot_data_equivalence(directory_data)
+
+
 def test_home_coming():
 
     port_arduino = find_arduino.find_arduino()
@@ -32,6 +38,7 @@ def test_home_coming():
 
         mc.serial_actuate(x, y, z, arduino_port_1)
         print('updated')
+
 
 def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
                      'phantom_lumen/', folder_name='ResUnet_lr_0.0001_bs_16_rgb_19_05_2021_17_07'):
@@ -127,11 +134,10 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
         new_jacobian = np.array([[1, 0], [0, 1]])
         old_position = [0, 0, 0]
         flag_loop = 0
-
         while cap.isOpened():
+            init_time = time.time()
             prev = 0
             ret, frame = cap.read()
-            init_time = time.time()
             time_elapsed = time.time() - prev
 
             if ret is True:
@@ -170,6 +176,7 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                     #######\end original less naive control block############
                     #######jacobian_correction_control
                     if flag_loop == 0:
+                        delta_time = float(time.time() - init_time)
                         new_position = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
                         flag_loop = 1
                     else:
@@ -177,6 +184,7 @@ def test_vision_control(detect_scenario='lumen', abs_delta=70):
                         delta_q = [0, 0]
                         delta_q[0] = new_position[0] - old_position[0]
                         delta_q[1] = new_position[1] - old_position[1]
+                        delta_time = float(time.time() - init_time)
                         new_jacobian = gcf.update_jacobian(new_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y)
                         new_position = gcf.jacobian_correcion_control(new_jacobian, point_x, point_y, (w, h), abs_delta)
                     mc.serial_actuate(new_position[0], new_position[1], new_position[2], arduino_port)
@@ -594,6 +602,8 @@ if __name__ == "__main__":
         test_lumen_detection()
     elif args.command == 'home_coming':
         test_home_coming()
+    elif args.command == 'determine_q_function':
+        determine_q_function()
 
     else:
         raise Exception("The command written was not found")
