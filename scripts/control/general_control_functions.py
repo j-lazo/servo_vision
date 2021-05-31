@@ -12,14 +12,14 @@ def transform_to_img_space(point_x, point_y, shape_img):
 
 def naive_control(current_x, current_y, current_z, target_x, target_y,
                   img_shape, absolute_delta, user_define_step=0.003):
-    tranformed_x, tranformed_y = transform_to_img_space(target_x, target_y, img_shape)
-    tranformed_x = tranformed_x * -1
+    transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
+    transformed_x = transformed_x * -1
     target_vector = [current_x, current_y, current_z]
 
-    if (tranformed_x ** 2 + tranformed_y ** 2) > absolute_delta ** 2:
+    if (transformed_x ** 2 + transformed_y ** 2) > absolute_delta ** 2:
         print('updating x, y')
-        target_vector[0] = current_x + tranformed_x * user_define_step
-        target_vector[1] = current_y + tranformed_y * user_define_step
+        target_vector[0] = current_x + transformed_x * user_define_step
+        target_vector[1] = current_y + transformed_y * user_define_step
         target_vector[2] = current_z
         # target_vector[2] = current_z + delta_z * user_define_step
 
@@ -33,23 +33,28 @@ def naive_control(current_x, current_y, current_z, target_x, target_y,
 
 
 def less_naive_control(current_z, target_x, target_y,
-                       img_shape, absolute_delta, user_define_step=0.003):
+                       img_shape, absolute_delta, propotional_gain=0.5):
     transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
-    transformed_x = transformed_x * -1
+    transformed_x = transformed_x * -1 * propotional_gain
+    transformed_y = transformed_y * propotional_gain
     target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     target_vector = [0, 0, current_z]
 
     if target_distance > absolute_delta:
         print('updating x, y')
         print(target_distance)  # for later fine tune the number
-        target_vector[0] = transformed_x * user_define_step
-        target_vector[1] = transformed_y * user_define_step
+        # target_vector[0] = transformed_x * user_define_step
+        # target_vector[1] = transformed_y * user_define_step
+        target_vector[0] = (transformed_x * 1 + transformed_y * 0.18)
+        target_vector[1] = (transformed_x * -0.01 + transformed_y * 0.625)
         target_vector[2] = current_z
         # target_vector[2] = current_z + delta_z * user_define_step
 
     elif target_distance < absolute_delta & target_distance > absolute_delta * 0.2:
-        target_vector[0] = transformed_x * user_define_step * (target_distance / absolute_delta)
-        target_vector[1] = transformed_y * user_define_step * (target_distance / absolute_delta)
+        # target_vector[0] = transformed_x * user_define_step * (target_distance / absolute_delta)
+        # target_vector[1] = transformed_y * user_define_step * (target_distance / absolute_delta)
+        target_vector[0] = (transformed_x * 1 + transformed_y * 0.18) / 0.6268      * 0.05 * (target_distance / absolute_delta)
+        target_vector[1] = transformed_x * -0.01 + transformed_y * 0.625 / 0.6268 * 0.05 * (target_distance / absolute_delta)
         target_vector[2] = current_z + target_distance / absolute_delta
 
     else:
