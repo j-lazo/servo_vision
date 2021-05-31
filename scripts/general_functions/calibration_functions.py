@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import os
 from matplotlib import pyplot as plt
+from computer_vision import general_functions as gf
 
 
 def plot_data_equivalence(directory_data):
@@ -35,7 +36,7 @@ def plot_data_equivalence(directory_data):
         joints = read_vector_file(dir_joints_data + list_joints_position[i+1])
         print(joints)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        f, corners = find_corners(gray, pattern_size)
+        f, corners = gf.find_corners(gray, pattern_size)
         point_x = []
         point_y = []
 
@@ -59,7 +60,7 @@ def plot_data_equivalence(directory_data):
         joints = read_vector_file(dir_joints_data + list_joints_position[i+7])
         print(joints)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        f, corners = find_corners(gray, pattern_size)
+        f, corners = gf.find_corners(gray, pattern_size)
         point_y = []
         point_x = []
 
