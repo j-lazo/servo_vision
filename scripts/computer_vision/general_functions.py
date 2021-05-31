@@ -4,10 +4,42 @@ import copy
 import keras.backend as K
 from scipy.linalg import expm, inv
 from numpy import dot, eye
+import os
 
-def find_corners(image, pattern_size):
+
+def calculate_middle_point_chessboard(corners):
+
+    points_x = []
+    points_y = []
+
+    for point in corners:
+        points_x.append(point[0][0])
+        points_y.append(point[0][1])
+
+    point_x = int(np.mean(points_x))
+    point_y = int(np.mean(points_y))
+
+    return point_x, point_y
+
+
+def detect_corners_chessboard(frame):
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    found, corners = find_corners(gray)
+    if found:
+        output_image = draw_corners(gray, corners)
+        point_x, point_y = calculate_middle_point_chessboard(corners)
+
+    else:
+        output_image = gray
+        point_x = 'Nan'
+        point_y = 'Nan'
+
+    return output_image, point_x, point_y
+
+
+def find_corners(image, pattern_size=(7, 5)):
     """
-
     @param image: grayscale image
     @param pattern_size:
     @return:
@@ -19,7 +51,7 @@ def find_corners(image, pattern_size):
     return found, corners
 
 
-def draw_corners(image, corners, pattern_size):
+def draw_corners(image, corners, pattern_size=(7, 5)):
     color_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
     cv2.drawChessboardCorners(color_image, pattern_size, corners, True)
     return color_image
