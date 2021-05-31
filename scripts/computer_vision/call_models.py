@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 from tensorflow.keras.layers import *
 import tensorflow as tf
-import general_functions as cvf
+from computer_vision import general_functions as cvf
 
 
 def load_model(project_folder, name_model):
@@ -56,7 +56,8 @@ def detect_lumen(model, innput_frame, output_size=(300, 300)):
 
     cv2.line(output_imgage, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
     cv2.circle(output_imgage, (int(w / 2), int(h / 2)), 20, (0, 255, 255), 3)
-    cv2.circle(output_imgage, (int(w / 2), int(h / 2)), 3, (0, 255, 255), -1)
+    # center of the image
+    cv2.rectangle(output_imgage, (int(w / 2) - 3, int(h / 2) - 3), (int(w / 2) + 3, int(h / 2) + 3),  (0, 255, 255), -1)
 
     return output_imgage, point_x, point_y
 
