@@ -15,13 +15,13 @@ from control import general_control_functions as gcf
 import random
 import tensorflow as tf
 from computer_vision import general_functions as cvf
+from computer_vision import call_models as cm
 import datetime
 import time
 
 
 def determine_q_function():
     directory_data = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
-
     cf.plot_data_equivalence(directory_data)
 
 
@@ -46,18 +46,8 @@ def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_
     type_data = 'npy'
 
     cap = cv2.VideoCapture(0)
-    new_results_id = folder_name
-    results_directory = ''.join([project_folder, 'results/ResUnet/',
-                                 new_results_id, '/'])
-    name_model = ''.join([results_directory, new_results_id, '_model.h5'])
-    print('NAME MODEL')
-    print(name_model)
-    model = tf.keras.models.load_model(name_model,
-                                       custom_objects={'loss': cvf.dice_coef_loss},
-                                       compile=False)
+    model, input_size = cm.load_model(project_folder, folder_name)
     frame_rate = 60
-    point_x, point_y = 0, 0
-
     counter = 0
     while cap.isOpened():
         prev = 0
@@ -67,30 +57,10 @@ def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_
         time_elapsed = time.time() - prev
 
         if ret is True and counter > 10:
-
             if time_elapsed > 1. / frame_rate:
-                reshaped = cv2.resize(frame, (256, 256), interpolation=cv2.INTER_AREA)
-                resized = cv2.blur(reshaped, (7, 7))/255
-                mask = cvf.predict_mask(model, resized)
-                resized_2 = cv2.resize(reshaped, (300, 300), interpolation=cv2.INTER_AREA)
-                w, h, d = np.shape(resized_2)
-                previous_point_x = point_x
-                previous_point_y = point_y
-                point_x, point_y = cvf.detect_dark_region(mask, resized_2)
-                if point_x != 'nAN':
-                    cv2.circle(resized_2, (int(point_x), int(point_y)), 45, (0, 0, 255), 2)
-                if point_y != 'nAN':
-                    cv2.circle(resized_2, (int(point_x), int(point_y)), 25, (0, 0, 255), 2)
-
-                if point_x == 'nAN':
-                   point_x = previous_point_x
-                if point_y == 'nAN':
-                   point_y = previous_point_y
-
-                cv2.line(resized_2, (int(point_x), int(point_y)), (int(w/2), int(h/2)), (255, 0, 0), 4)
-                cv2.circle(resized_2, (int(w / 2), int(h / 2)), 3, (0, 0, 255), -1)
-                cv2.imshow('frame', resized_2)
-                print(point_x, point_y, 1/(time.time()-init_time))
+                detected, ptx, pty = cm.detect_lumen(model, frame)
+                cv2.imshow('frame', detected)
+                print('detected point:', ptx, pty, 'frequency:', 1 / (time.time() - init_time))
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
         else:
@@ -102,38 +72,31 @@ def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_
 
 
 def test_vision_control(detect_scenario='chessboard', abs_delta=70):
-
+    # intialize camera
     cap = cv2.VideoCapture(0)
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     out = cv2.VideoWriter('output.avi', fourcc, 20.0, (300, 300))
+    # find arduino
     port_arduino = find_arduino.find_arduino()
     print('Arduino detected at:', port_arduino)
     arduino_port = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+
+    # initialize the Jacobian matrix, k = 0
+    new_jacobian = np.array([[0.625, -0.18], [0.08, 1.0]])
 
     current_act_x = 0
     current_act_y = 0
     current_act_z = 0
 
     if detect_scenario == 'lumen':
-
         project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                         'phantom_lumen/'
-
+                         'phantom_lumen/results/ResUnet/'
         folder_name = 'ResUnet_lr_0.0001_bs_16_rgb_19_05_2021_17_07'
-        new_results_id = folder_name
-        results_directory = ''.join([project_folder, 'results/ResUnet/',
-                                     new_results_id, '/'])
-        name_model = ''.join([results_directory, new_results_id, '_model.h5'])
-        print('NAME MODEL')
-        print(name_model)
-        model = tf.keras.models.load_model(name_model,
-                                           custom_objects={'loss': cvf.dice_coef_loss},
-                                           compile=False)
+
         frame_rate = 60
         point_x, point_y = 0, 0
+        model, input_size = cm.load_model(project_folder, folder_name)
 
-        #initialize the Jacobian matrix, k = 0
-        new_jacobian = np.array([[0.625, -0.18], [0.08, 1.0]])
         old_position = [0, 0, 0]
         flag_loop = 0
         while cap.isOpened():
@@ -143,25 +106,10 @@ def test_vision_control(detect_scenario='chessboard', abs_delta=70):
             time_elapsed = time.time() - prev
 
             if ret is True:
-
                 if time_elapsed > 1. / frame_rate:
-                    reshaped = cv2.resize(frame, (256, 256), interpolation=cv2.INTER_AREA)
-                    resized = cv2.blur(reshaped, (7, 7)) / 255
-                    mask = cvf.predict_mask(model, resized)
-                    resized_2 = cv2.resize(reshaped, (300, 300), interpolation=cv2.INTER_AREA)
-                    w, h, d = np.shape(resized_2)
-                    previous_point_x = point_x
-                    previous_point_y = point_y
-                    point_x, point_y = cvf.detect_dark_region(mask, resized_2)
-                    if point_x != 'nAN':
-                        cv2.circle(resized_2, (int(point_x), int(point_y)), 45, (0, 0, 255), 2)
-                    if point_y != 'nAN':
-                        cv2.circle(resized_2, (int(point_x), int(point_y)), 25, (0, 0, 255), 2)
-
-                    if point_x == 'nAN':
-                        point_x = previous_point_x
-                    if point_y == 'nAN':
-                        point_y = previous_point_y
+                    detected, ptx, pty = cm.detect_lumen(model, frame)
+                    cv2.imshow('frame', detected)
+                    print('detected point:', ptx, pty, 'frequency:', 1 / (time.time() - init_time))
 
                     #new_position = gcf.naive_control(current_act_x, current_act_y, current_act_z,
                     #                                 point_x, point_y, (w, h), abs_delta)
@@ -196,14 +144,8 @@ def test_vision_control(detect_scenario='chessboard', abs_delta=70):
                     old_position = new_position
                     old_act_joint_variable = current_act_joint_variable
 
-                    #sleep(0.01)
-                    cv2.line(resized_2, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
-                    cv2.circle(resized_2, (int(w / 2), int(h / 2)), 3, (0, 255, 255), -1)
-                    #cv2.circle(resized_2, (int(point_x), int(point_y)), 20, (0, 0, 255), 2)
-                    # yellow circle
-                    #cv2.circle(resized_2, (int(w / 2), int(h / 2)), abs_delta, (0, 255, 255), 2)
-                    cv2.imshow('frame', resized_2)
-                    out.write(resized_2)
+                    cv2.imshow('frame', detected)
+                    out.write(detected)
                     if cv2.waitKey(1) & 0xFF == ord('q'):
                         sleep(0.5)
                         mc.serial_actuate(0, 0, 0, arduino_port)
@@ -218,9 +160,7 @@ def test_vision_control(detect_scenario='chessboard', abs_delta=70):
         cv2.destroyAllWindows()
 
     elif detect_scenario == 'circle':
-
         while cap.isOpened():
-
             ret, frame = cap.read()
             if ret is True:
                 h, w, d = np.shape(frame)
@@ -251,8 +191,6 @@ def test_vision_control(detect_scenario='chessboard', abs_delta=70):
     elif detect_scenario == 'chessboard':
 
         point_x, point_y = 0, 0
-        #initialize the Jacobian matrix, k = 0
-        new_jacobian = np.array([[0.625, -0.18], [0.08, 1.0]])
         old_position = [0, 0, 0]
         flag_loop = 0
         while cap.isOpened():
@@ -302,8 +240,10 @@ def test_vision_control(detect_scenario='chessboard', abs_delta=70):
 
                     if points_x:
                         point_x = points_x[5]
+                        print(point_x, 'point x')
                     if points_y:
                         point_y = points_y[5]
+                        print(point_y, 'point y')
 
             else:
                 cv2.imshow('test', frame)
