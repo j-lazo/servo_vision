@@ -53,8 +53,10 @@ def less_naive_control(current_z, target_x, target_y,
     elif target_distance < absolute_delta & target_distance > absolute_delta * 0.2:
         # target_vector[0] = transformed_x * user_define_step * (target_distance / absolute_delta)
         # target_vector[1] = transformed_y * user_define_step * (target_distance / absolute_delta)
-        target_vector[0] = (transformed_x * 1 + transformed_y * 0.18) / 0.6268      * 0.05 * (target_distance / absolute_delta)
-        target_vector[1] = transformed_x * -0.01 + transformed_y * 0.625 / 0.6268 * 0.05 * (target_distance / absolute_delta)
+        target_vector[0] = (transformed_x * 1 + transformed_y * 0.18) / 0.6268 * 0.05 * (
+                target_distance / absolute_delta)
+        target_vector[1] = transformed_x * -0.01 + transformed_y * 0.625 / 0.6268 * 0.05 * (
+                target_distance / absolute_delta)
         target_vector[2] = current_z + target_distance / absolute_delta
 
     else:
@@ -64,6 +66,22 @@ def less_naive_control(current_z, target_x, target_y,
         target_vector[2] = current_z + 0.2
 
     return target_vector
+
+
+def nasty_control(current_z, target_x, target_y,
+                  img_shape):
+    # initialize the parameters
+    transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
+    transformed_x = transformed_x * -1
+    transformed_y = transformed_y
+    target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
+
+    # mapping the right zone
+    unit_vector_x, unit_vector_y, theta = mapping_direction(transformed_x, transformed_y)
+    magnitude = mapping_distance(target_distance)
+    target_vector = [unit_vector_x * magnitude, unit_vector_y * magnitude, current_z + magnitude * 0.1]
+
+    return target_vector, theta, magnitude
 
 
 def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, absolute_delta, user_define_step=1):
@@ -82,7 +100,7 @@ def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, abso
 
 
 def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_shape, absolute_delta,
-                                        user_define_step=1, delta_time=34):
+                                         user_define_step=1, delta_time=34):
     transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
     transformed_x = transformed_x * -1
     print(transformed_x)
@@ -90,7 +108,7 @@ def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_s
     target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     target_vector = np.array([transformed_x, transformed_y])
     inverse_jacobian = np.linalg.inv(new_jacobian)
-    actuate_vector = (np.matmul(inverse_jacobian, target_vector)/delta_time*2).tolist()  # make it back a list.
+    actuate_vector = (np.matmul(inverse_jacobian, target_vector) / delta_time * 2).tolist()  # make it back a list.
     ############VERY IMPORTANT TIME FACTOR CONSIDERATION::: ARDUINO OR PYTHON TIME SYNC ###################
     if target_distance > absolute_delta:
         actuate_vector_z = [0]
@@ -102,7 +120,8 @@ def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_s
 def update_jacobian(current_jacobian, delta_time, delta_q, point_x, point_y, previous_point_x, previous_point_y,
                     beta=0.05):
     delta_q = np.array(delta_q).astype(float) / delta_time
-    delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y]).astype(float) / delta_time
+    delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y]).astype(
+        float) / delta_time
     if delta_q[0] == 0 and delta_q[1] == 0:
         new_jacobian = current_jacobian
     else:
@@ -114,9 +133,49 @@ def update_jacobian(current_jacobian, delta_time, delta_q, point_x, point_y, pre
         print ("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
         print ("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
         new_jacobian = current_jacobian + beta * np.outer(
-            delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q, delta_q)
+            delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q,
+                                                                                                          delta_q)
 
     return new_jacobian
+
+
+def mapping_direction(transformed_x, transformed_y):
+    theta = np.arctan(transformed_y / transformed_x)
+    step = np.pi / 8
+    if -step <= theta < step:
+        theta = (-step + step) / 2
+    elif step <= theta < step * 3:
+        theta = (step * 1 + step * 3) / 2
+    elif step * 3 <= theta < step * 5:
+        theta = (step * 3 + step * 5) / 2
+    elif step * 6 <= theta < step * 7:
+        theta = (step * 1 + step * 7) / 2
+    elif step * 7 <= theta < step * 9:
+        theta = (step * 1 + step * 9) / 2
+    elif step * 9 <= theta < step * 11:
+        theta = (step * 1 + step * 11) / 2
+    elif step * 11 <= theta < step * 13:
+        theta = (step * 1 + step * 13) / 2
+    elif step * 13 <= theta < step * 15:
+        theta = (step * 1 + step * 15) / 2
+
+    unit_vector_x = np.cos(theta)
+    unit_vector_y = np.sin(theta)
+
+    return unit_vector_x, unit_vector_y, theta
+
+
+def mapping_distance(target_distance):
+    if target_distance > 200:
+        magnitude = 10
+    elif 200 > target_distance > 100:
+        magnitude = 3
+    elif 100 > target_distance > 30:
+        magnitude = 1
+    else:
+        magnitude = 0
+
+    return magnitude
 
 
 def main():
@@ -124,7 +183,8 @@ def main():
     delta_q = [1, 0]
     point_x, point_y, previous_point_x, previous_point_y = 1.0, 0.0, 3.0, 0.0
     target_x, target_y = 2.0, 3.0
-    new_jacobian = update_jacobian(jacobian, 0.0016, delta_q, point_x, point_y, previous_point_x, previous_point_y, beta=1)
+    new_jacobian = update_jacobian(jacobian, 0.0016, delta_q, point_x, point_y, previous_point_x, previous_point_y,
+                                   beta=1)
     print ("old jacobian matrix:", jacobian, "and the new one!:", new_jacobian)
     print ("actuation velocity: ", jocobian_correcion_velocity_control(jacobian, target_x, target_y, (400, 600), 30))
     return 0

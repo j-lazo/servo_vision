@@ -113,6 +113,35 @@ def simple_test():
             break
 
 
+def nasty_test():
+
+    cap = cv2.VideoCapture(0)
+    port_arduino = find_arduino.find_arduino()
+    print('Arduino detected at:', port_arduino)
+    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+    current_act_z = 0
+    old_theta = 0
+    old_magnitude = 0
+    while cap.isOpened():
+        key = cv2.waitKey(1) & 0xFF
+        ret, frame = cap.read()
+        if ret is True:
+            h, w, d = np.shape(frame)
+            centre_x = int(w / 2)
+            centre_y = int(h / 2)
+            cv2.imshow('video', frame)
+            target_x = centre_x + 20
+            target_y = centre_y - 15
+            target_vector, theta, magnitude = gcf.nasty_control(current_act_z, target_x, target_y)
+            if theta != old_theta and magnitude != old_magnitude:
+                mc.serial_actuate(target_vector[0], target_vector[1], target_vector[2], arduino_port_1)
+            old_theta = theta
+            old_magnitude = magnitude
+        if key == ord('q'):
+            mc.serial_actuate(0, 0, 0, arduino_port_1)
+            break
+
+
 def manual_control():
     cap = cv2.VideoCapture(0)
     port_arduino = find_arduino.find_arduino()
