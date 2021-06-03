@@ -4,6 +4,11 @@ import cv2
 import tensorflow as tf
 
 
+def calculate_average_points(list_of_points):
+    clean_list = [point for point in list_of_points if not(not(np.isnan(point)))]
+    average_point = np.mean(clean_list)
+    return average_point
+
 def load_data(path, image_modality):
     """
     @param path: path of the directory with images and masks

@@ -81,14 +81,16 @@ def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, abso
     return actuate_vector + actuate_vector_z  # Here we return a list!
 
 
-def jocobian_correcion_velocity_control(new_jacobian, target_x, target_y, img_shape, absolute_delta,
+def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_shape, absolute_delta,
                                         user_define_step=1, delta_time=34):
     transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
     transformed_x = transformed_x * -1
+    print(transformed_x)
+    print(transformed_y)
     target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     target_vector = np.array([transformed_x, transformed_y])
     inverse_jacobian = np.linalg.inv(new_jacobian)
-    actuate_vector = (np.matmul(inverse_jacobian, target_vector)/delta_time).tolist()  # make it back a list.
+    actuate_vector = (np.matmul(inverse_jacobian, target_vector)/delta_time*2).tolist()  # make it back a list.
     ############VERY IMPORTANT TIME FACTOR CONSIDERATION::: ARDUINO OR PYTHON TIME SYNC ###################
     if target_distance > absolute_delta:
         actuate_vector_z = [0]
@@ -101,18 +103,18 @@ def update_jacobian(current_jacobian, delta_time, delta_q, point_x, point_y, pre
                     beta=0.05):
     delta_q = np.array(delta_q).astype(float) / delta_time
     delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y]).astype(float) / delta_time
-    # print ("current_jacobian:", current_jacobian)
-    # print ("delta_actual_displacement:", delta_actual_displacement)
-    # print ("delta_q:", delta_q)
-    # print ("JkQk:", np.matmul(current_jacobian, delta_q))
-    # print ("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
-    # print ("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
-    # print ("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
-    # a = np.array([1, 2])
-    # b = np.array([3, 4])
-    # print ("a outer b:", np.outer(a, b))
-    new_jacobian = current_jacobian + beta * np.outer(
-        delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q, delta_q)
+    if delta_q[0] == 0 and delta_q[1] == 0:
+        new_jacobian = current_jacobian
+    else:
+        print ("current_jacobian:", current_jacobian)
+        print ("delta_actual_displacement:", delta_actual_displacement)
+        print ("delta_q:", delta_q)
+        print ("JkQk:", np.matmul(current_jacobian, delta_q))
+        print ("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
+        print ("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
+        print ("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
+        new_jacobian = current_jacobian + beta * np.outer(
+            delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q, delta_q)
 
     return new_jacobian
 
