@@ -9,6 +9,12 @@ import os
 
 def calculate_middle_point_chessboard(corners):
 
+    """
+    Caclulates the middle point of a chessboard given the corners of the points
+    @param corners: the corners detected
+    @return: the point x,y of the chessboard
+    """
+
     points_x = []
     points_y = []
 
@@ -82,7 +88,7 @@ def calibrate_lens(dir_imgs, pattern_size, square_size):
         img_points.append(corners.reshape(-1, 2))
         obj_points.append(pattern_points)
 
-    camera_matrix = np.zeros((3,3))
+    camera_matrix = np.zeros((3, 3))
     dist_coeffs = np.zeros(5)
     #rms, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(obj_points, img_points, (w,h))
     cv2.calibrateCamera(obj_points, img_points, (w, h), camera_matrix, dist_coeffs)
@@ -103,6 +109,13 @@ def tf_mat(r, t):
 
 
 def detect_dark_region(mask, image):
+    """
+    Caclualtes the middle points of the mask depending on...
+    @param mask:
+    @param image:
+    @return:
+    """
+
     w_image, h_image, d_image = np.shape(image)
     w_mask, h_mask, d_mask = np.shape(mask)
     temp_mask = np.zeros((w_mask, h_mask, 3), dtype="float32")
@@ -126,7 +139,14 @@ def detect_dark_region(mask, image):
     return point_x, point_y
 
 
-def clean_mask(mask):
+def clean_mask(mask, threshold=0.15):
+
+    """
+
+    @param mask:
+    @param threshold: a percentage to be compared
+    @return:
+    """
 
     mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
     u8 = mask.astype(np.uint8)
@@ -144,8 +164,8 @@ def clean_mask(mask):
         sorted_areas = sorted(areas, reverse=True)
         index_remove = np.ones(len(areas))
         for i in range(len(sorted_areas)-1):
-            # if an area is 1/4 smaller than the bigger area, mark to remove
-            if sorted_areas[i+1] < 0.15 * sorted_areas[0]:
+            # if an area is (threshold %)smaller than the bigger area, mark to remove
+            if sorted_areas[i+1] < threshold * sorted_areas[0]:
                 index_remove[areas.index(sorted_areas[i+1])] = 0
                 remove_small_areas = True
 
@@ -221,31 +241,76 @@ def build_contours(array_of_points):
     return contours
 
 
-def calc_histograms_and_center(mask, image):
+def calc_histograms_and_center(mask, image, method='direct_mask'):
 
-    if not (np.all(mask == 0)):
+    point_x = np.nan
+    point_y = np.nan
 
-        percentage = 0.6
-        #grayscale = cv2.cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        grayscale = image[:, :, 2]
-        grayscale = np.multiply(grayscale, mask)
+    if method == 'direct_mask':
+        # calculates the centroid of the lumen using directly the mask
+        if not (np.all(mask == 0)):
+            mask = np.array(mask * 255, dtype=np.uint8)
+            color = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+            gray = cv2.cvtColor(color, cv2.COLOR_BGR2GRAY)  # convert to grayscale
+            blur = cv2.blur(gray, (3, 3))  # blur the image
+            ret, thresh = cv2.threshold(blur, 90, 255, cv2.THRESH_BINARY)
 
-        #list_values_grayscale = [value for row in grayscale for value in row if value != 0]
-        # create the histogram plot, with three lines, one for
-        # each color
-        max_grays = ((np.where(grayscale >= int(percentage * np.amax(grayscale)))))
-        gray_contours = np.asarray([build_contours(max_grays)])
-        gray_convex_hull, gray_x, gray_y = determine_convex_hull(gray_contours)
+            # Finding contours for the thresholded image
+            contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-        points_x = []
-        points_y = []
-        for hull in gray_convex_hull:
-            for i, point in enumerate(hull):
-                points_x.append(point[0][0])
-                points_y.append(point[0][1])
+            # create hull array for convex hull points
+            new_hulls = []
+            new_contours = []
+            # calculate points for each contour
 
-    else:
-        gray_x = 'nAN'
-        gray_y = 'nAN'
+            if len(contours) > 1:
+                temp_contours = contours[0]
+                for i in range(1, len(contours)):
+                    temp_contours = np.concatenate((temp_contours, contours[i]), axis=0)
 
-    return gray_x, gray_y
+                new_contours.append(temp_contours)
+            else:
+                new_contours = contours
+
+            for i in range(len(new_contours)):
+                # print('new_contour', type(new_contours[i]))
+                # print(new_contours[i])
+                new_hulls.append(cv2.convexHull(new_contours[i], False))
+
+            M = cv2.moments(new_contours[0])
+            point_x = int(M["m10"] / M["m00"])
+            point_y = int(M["m01"] / M["m00"])
+
+        else:
+            point_x = np.nan
+            point_y = np.nan
+
+    elif method == 'dark_points':
+
+        # calculates the centroid of considering only the dark points above certain threshold
+        if not (np.all(mask == 0)):
+            percentage = 0.6
+            # grayscale = cv2.cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            grayscale = image[:, :, 2]
+            grayscale = np.multiply(grayscale, mask)
+
+            # list_values_grayscale = [value for row in grayscale for value in row if value != 0]
+            # create the histogram plot, with three lines, one for
+            # each color
+            max_grays = ((np.where(grayscale >= int(percentage * np.amax(grayscale)))))
+            # in this case the center is calculated using only the grayscale image
+            gray_contours = np.asarray([build_contours(max_grays)])
+            gray_convex_hull, point_x, point_y = determine_convex_hull(gray_contours)
+
+            points_x = []
+            points_y = []
+            for hull in gray_convex_hull:
+                for i, point in enumerate(hull):
+                    points_x.append(point[0][0])
+                    points_y.append(point[0][1])
+
+        else:
+            point_x = np.nan
+            point_y = np.nan
+
+    return point_x, point_y
