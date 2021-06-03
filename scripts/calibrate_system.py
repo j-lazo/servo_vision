@@ -71,44 +71,93 @@ def test_home_coming():
         print('updated')
 
 
+def simple_test():
+
+    cap = cv2.VideoCapture(0)
+    port_arduino = find_arduino.find_arduino()
+    print('Arduino detected at:', port_arduino)
+    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+    points_x = list(range(-90, 90))
+    points_x = [x/1 for x in points_x]
+    previous_velocity = 0
+    count = 0
+    while cap.isOpened():
+        key = cv2.waitKey(1) & 0xFF
+        ret, frame = cap.read()
+
+        if ret is True:
+            cv2.imshow('video', frame)
+            x = points_x[count]
+            print(x)
+            if x in range(-91, 0):
+                velocity = -15
+                print('right')
+                if previous_velocity != velocity:
+                    mc.serial_actuate(velocity, 0, 0, arduino_port_1)
+
+            elif x in range(1, 91):
+                velocity = 15
+                print('left')
+                if previous_velocity != velocity:
+                    mc.serial_actuate(velocity, 0, 0, arduino_port_1)
+
+        #sleep(0.02)
+        previous_velocity = velocity
+        count = count + 1
+        if count == len(points_x):
+            count = 0
+            points_x = points_x[::-1]
+
+        if key == ord('q'):
+            mc.serial_actuate(0, 0, 0, arduino_port_1)
+            break
+
+
 def manual_control():
     cap = cv2.VideoCapture(0)
     port_arduino = find_arduino.find_arduino()
     print('Arduino detected at:', port_arduino)
     arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
-
+    z = 0
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
-
         ret, frame = cap.read()
+        defined_speed = 5
         if ret is True:
+            h, w, d = np.shape(frame)
+            cv2.line(frame, (int(w/2), 0), (int(w/2), h), (0, 255, 255), 3)
+            cv2.line(frame, (0, int(h/2)), (w, int(h/2)), (0, 255, 255), 3)
+            cv2.circle(frame, (int(w/2), int(h/2)), 90, (0, 0, 255), 3)
             cv2.imshow('video', frame)
             if key == 83:
                 print('right')
-                mc.serial_actuate(10, 0, 0, arduino_port_1)
+                mc.serial_actuate(-defined_speed, 0, 0, arduino_port_1)
             elif key == 81:
                 print('left')
-                mc.serial_actuate(-10, 0, 0, arduino_port_1)
+                mc.serial_actuate(defined_speed, 0, 0, arduino_port_1)
             elif key == 82:
                 print('up')
-                mc.serial_actuate(0, 10, 0, arduino_port_1)
+                mc.serial_actuate(0, defined_speed, 0, arduino_port_1)
             elif key == 84:
                 print('down')
-                mc.serial_actuate(0, -10, 0, arduino_port_1)
+                mc.serial_actuate(0, -defined_speed, 0, arduino_port_1)
             elif key == ord('f'):
                 print('forward')
-                mc.serial_actuate(0, 0, 10, arduino_port_1)
+                z = z + 1
+                mc.serial_actuate(0, 0, z, arduino_port_1)
             elif key == ord('b'):
                 print('backwards')
-                mc.serial_actuate(0, 0, -20, arduino_port_1)
+                z = z - 1
+                mc.serial_actuate(0, 0, z, arduino_port_1)
 
             elif key == ord('s'):
                 print('stop')
                 mc.serial_actuate(0, 0, 0, arduino_port_1)
-            else:
-                mc.serial_actuate(0, 0, 0, arduino_port_1)
+            #else:
+                #mc.serial_actuate(0, 0, z, arduino_port_1)
 
         sleep(0.08)
+
         if key == ord('q'):
             mc.serial_actuate(0, 0, 0, arduino_port_1)
             break
@@ -186,38 +235,6 @@ def test_vision_control(detect_scenario='lu', record_video=True, abs_delta=15):
     current_act_y = 0
     current_act_z = 0
 
-    if detect_scenario == 'lu':
-
-        average_pty = 150
-        points_x = list(range(0, 270, 10))
-        points_x = points_x[::-1]
-        count = 0
-        while cap.isOpened():
-            init_time = time.time()
-            prev = 0
-            ret, frame = cap.read()
-            time_elapsed = time.time() - prev
-            h_o, w_o, = 300, 300
-            print('point x:', points_x[count], 'point y:', average_pty)
-            new_velocity = gcf.less_naive_control(current_act_z, points_x[count],
-                                                    average_pty, (h_o, w_o), abs_delta,
-                                                         user_define_step=0.1)
-            mc.serial_actuate(new_velocity[0], new_velocity[1], new_velocity[2], arduino_port)
-            # delay so the board has time to receive the signal
-            sleep(0.5)
-            current_act_z = new_velocity[2]
-            #cv2.circle(output_image, (int(average_ptx), int(average_pty)), 3, (255, 255, 255), -1)
-            #cv2.circle(output_image, (int(average_ptx), int(average_pty)), 5, (0, 0, 0), 2)
-            count = count + 1
-            if count == len(points_x):
-                count = 0
-                points_x = points_x[::-1]
-
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                mc.serial_actuate(0, 0, 0, arduino_port)
-                break
-
-
     if detect_scenario == 'lumen':
 
         # read an image to get its size and determine the initial conditions
@@ -249,7 +266,6 @@ def test_vision_control(detect_scenario='lu', record_video=True, abs_delta=15):
                     center_points_y.append(point_y)
                     average_ptx = dm.calculate_average_points(center_points_x[-6:])
                     average_pty = dm.calculate_average_points(center_points_y[-6:])
-
                     # if a point is detected
                     if not(np.isnan(average_ptx)) and not(np.isnan(average_pty)):
                         h_o, w_o, d = np.shape(output_image)
@@ -694,6 +710,8 @@ if __name__ == "__main__":
         general_calibration()
     elif args.command == 'manual_control':
         manual_control()
+    elif args.command == 'simple_test':
+        simple_test()
 
     else:
         raise Exception("The command written was not found")
