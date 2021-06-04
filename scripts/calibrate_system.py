@@ -149,10 +149,10 @@ def nasty_test():
                     print('detected')
                     cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
                     h, w, d = np.shape(output_image)
-                    target_vector, theta, magnitude = gcf.nasty_control(current_act_z, ptx, pty, (h, w))
+                    target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
                     if theta != old_theta or magnitude != old_magnitude:
                         print('actuate(x, y)')
-                        mc.serial_actuate(target_vector[0], target_vector[1], target_vector[2], arduino_port_1)
+                        mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
                     if magnitude == 0:
                         print('actuate(z)')
                         current_act_z = current_act_z + 10
@@ -161,7 +161,7 @@ def nasty_test():
                     old_magnitude = magnitude
                 else:
                     print('no target detected, stop')
-                    mc.serial_actuate(0, 0, 0, arduino_port_1)
+                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
                 #    cv2.imshow('video', frame)
                 cv2.imshow('video', output_image)
 
@@ -190,16 +190,16 @@ def manual_control():
             cv2.imshow('video', frame)
             if key == 83:
                 print('right')
-                mc.serial_actuate(-defined_speed, 0, 0, arduino_port_1)
+                mc.serial_actuate(-defined_speed, 0, z, arduino_port_1)
             elif key == 81:
                 print('left')
-                mc.serial_actuate(defined_speed, 0, 0, arduino_port_1)
+                mc.serial_actuate(defined_speed, 0, z, arduino_port_1)
             elif key == 82:
                 print('up')
-                mc.serial_actuate(0, defined_speed, 0, arduino_port_1)
+                mc.serial_actuate(0, defined_speed, z, arduino_port_1)
             elif key == 84:
                 print('down')
-                mc.serial_actuate(0, -defined_speed, 0, arduino_port_1)
+                mc.serial_actuate(0, -defined_speed, z, arduino_port_1)
             elif key == ord('f'):
                 print('forward')
                 z = z + 1
@@ -211,14 +211,14 @@ def manual_control():
 
             elif key == ord('s'):
                 print('stop')
-                mc.serial_actuate(0, 0, 0, arduino_port_1)
+                mc.serial_actuate(0, 0, z, arduino_port_1)
             #else:
                 #mc.serial_actuate(0, 0, z, arduino_port_1)
 
         sleep(0.08)
 
         if key == ord('q'):
-            mc.serial_actuate(0, 0, 0, arduino_port_1)
+            mc.serial_actuate(0, 0, z, arduino_port_1)
             break
 
 
