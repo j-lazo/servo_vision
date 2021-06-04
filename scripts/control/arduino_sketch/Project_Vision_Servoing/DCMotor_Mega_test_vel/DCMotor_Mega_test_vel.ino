@@ -16,7 +16,7 @@ volatile int lastEncoded_side = 0; // Here updated value of encoder store.
 volatile int encoderValue_side = 0; // Raw encoder value
 volatile int lastEncoded_stepper = 0; // Here updated value of encoder store.
 volatile long encoderValue_stepper = 0; // Raw encoder value
-
+int robot_boundary = 2500;
 
 
 
@@ -45,11 +45,11 @@ long old_position_side = 0;
 
 long vel_upper;
 long vel_side;
+long timeArray[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int indexArray = 0;
 
 
-
-
-double upper_kp = 0.85 , upper_ki = 20 , upper_kd = 0.0001;
+double upper_kp = 3 , upper_ki = 40 , upper_kd = 0;
 double upper_input = 0, upper_output = 0, upper_setpoint = 0;
 long REV_upper = 0;
 int user_input_upper = 0;
@@ -60,7 +60,7 @@ PID upper_motor_PID(&upper_input, &upper_output, &upper_setpoint, upper_kp, uppe
 #define SideMotFwd  9  // Motor Forward pin
 #define SideMotRev  10 // Motor Reverse pin
 
-double side_kp = 0.85 , side_ki = 20 , side_kd = 0.0001;
+double side_kp = 1.85 , side_ki = 30 , side_kd = 0.0001;
 double side_input = 0, side_output = 0, side_setpoint = 0;
 long REV_side = 0;
 int user_input_side = 0;
@@ -138,23 +138,10 @@ void setup() {
   digitalWrite(DIR_FLAG2,LOW);
   //wait for serial setup.
   delay(1000);
-
-  //Extra LED for warning:
-  pinMode(49, OUTPUT);
-
-
 }
 
 void loop() {
 //  put your main code here, to run repeatedly:
-
-//////////////////////////////////////////warning flag/////////////////////////////////////////////////////////
-
-if (encoderValue_upper || encoderValue_side > 2400){digitalWrite(49, HIGH);}
-else if (encoderValue_upper || encoderValue_side < -2400){digitalWrite(49, HIGH);}
-else{digitalWrite(49, LOW);}
-
-
 ////////////////////////////////////////////Read from Serial////////////////////////////////////////////////
   int seperate_flag = 0;
   int read_flag = 0;
@@ -216,25 +203,40 @@ else{digitalWrite(49, LOW);}
 
 ////////////////////////////for velocity control later !/////////////////////////////////////////////
 //new velocity for input//
-  delay(5);
+  delay(15);
   new_time = millis();
   long dif_time = new_time - old_time;
+/////Averaging time///////////
+  timeArray[indexArray] = dif_time;
+  indexArray ++;
+  if(indexArray > 9) {indexArray = 0;}
+  long sum = 0;
+  for (int i = 0; i < 10; i ++){
+    sum = sum + timeArray[i];
+  }
+  long timeAverage = sum / 10;
+//////////////////////////////
   new_position_upper = encoderValue_upper;
   new_position_side = encoderValue_side;
   int dif_upper = (new_position_upper - old_position_upper) * 100;
   int dif_side = (new_position_side - old_position_side) * 100;
-  int vel_upper = dif_upper / dif_time;
-  int vel_side = dif_side / dif_time;
-//
-  Serial.print(REV_upper);
-  Serial.print(",");
-  Serial.print(vel_upper);
-  Serial.print(",");
-  Serial.print(REV_side);
-  Serial.print(",");
-  Serial.print(vel_side);
-  Serial.print(",");
-  Serial.println(dif_time);
+  int vel_upper = dif_upper / timeAverage;
+  int vel_side = dif_side / timeAverage;
+
+
+//  Serial.print(REV_upper);
+//  Serial.print(",");
+//  Serial.print(vel_upper);
+//  Serial.print(",");
+//  Serial.print(encoderValue_upper);
+//  Serial.print(",");
+//  Serial.print(encoderValue_side);
+//  Serial.print(",");
+//  Serial.print(REV_side);
+//  Serial.print(",");
+//  Serial.print(vel_side);
+//  Serial.print(",");
+//  Serial.println(timeAverage);
 
   
   old_position_upper = new_position_upper;
@@ -243,8 +245,8 @@ else{digitalWrite(49, LOW);}
 /////////////////////////////////////////////////////////////////////////////////////////////////////
   
 /////////////////////////////////////////////////////////////////////////////////////////////////////
-  REV_upper = map (user_input_upper, -30, 30, -200, 200); // mapping degree into pulse
-  REV_side = map (user_input_side, -30, 30, -200, 200); // mapping degree into pulse
+  REV_upper = map (user_input_upper, -200, 200, -600, 600); // mapping degree into pulse
+  REV_side = map (user_input_side, -200, 200, -600, 600); // mapping degree into pulse
   DIST_stepper = map(user_input_stepper, -500, 500, -400000, 400000); // 0.01 mm ----> encoder pulse
   if (REV_upper > 200){REV_upper = 200;}
   else if (REV_upper < -200){REV_upper = -200;}
@@ -256,12 +258,18 @@ else{digitalWrite(49, LOW);}
   upper_setpoint = REV_upper;                  // set a new setpoint from python server
   upper_input = vel_upper;
   upper_motor_PID.Compute();                 // calculate new output
-  pwmOut(upper_output, UpperMotEnable);
+  if(encoderValue_upper < robot_boundary && encoderValue_upper > -robot_boundary){
+    pwmOut(upper_output, UpperMotEnable);
+    }
+  else {pwmOut(0, UpperMotEnable);}
   //side motor
   side_setpoint = REV_side;                  // set a new setpoint from python server
   side_input = vel_side;
   side_motor_PID.Compute();                 // calculate new output
-  pwmOut(side_output, SideMotEnable);
+  if(encoderValue_side < robot_boundary && encoderValue_side > -robot_boundary){
+    pwmOut(side_output, SideMotEnable);
+  }
+  else {pwmOut(0, SideMotEnable);}
 //  for serial plot test
 
 //  Serial.print(",");
@@ -319,22 +327,22 @@ void updateEncoder_stepper(){
 
 void pwmOut(int out, int motor_number) {   // motor number 1 == upper // 2 == side
   if (motor_number == 5){                        
-    if (out > 0 && encoderValue_upper < 2400) {                         // if REV > encoderValue motor move in forward direction.    
+    if (out > 0) {                         // if REV > encoderValue motor move in forward direction.    
       analogWrite(UpperMotEnable, out);         // Enabling motor enable pin to reach the desire angle
       forward(motor_number);                           // calling motor to move forward
     }
-    else if(out < 0 && encoderValue_upper > -2400){
+    else {
       analogWrite(UpperMotEnable, abs(out));          // if REV < encoderValue motor move in forward direction.                      
       reverse(motor_number);                            // calling motor to move reverse
     }
 //  receiveData=""; // Cleaning User input, ready for new Input
   }
   else if(motor_number == 8){
-    if (out > 0 && encoderValue_side < 2400) {                         // if REV > encoderValue motor move in forward direction.    
+    if (out > 0) {                         // if REV > encoderValue motor move in forward direction.    
       analogWrite(SideMotEnable, out);         // Enabling motor enable pin to reach the desire angle
       forward(motor_number);                           // calling motor to move forward
     }
-    else if (out < 0 && encoderValue_side > -2400){
+    else {
       analogWrite(SideMotEnable, abs(out));          // if REV < encoderValue motor move in forward direction.                      
       reverse(motor_number);                            // calling motor to move reverse
     }
