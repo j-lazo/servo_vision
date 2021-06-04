@@ -37,25 +37,17 @@ def detect_lumen(model, innput_frame, output_size=(300, 300)):
     resized = (cv2.blur(reshaped_img, (7, 7)))/255
     # make a prediction of the mask
     mask = cvf.predict_mask(model, resized)
-
+    # resize the image for a size to show to the user
     output_imgage = cv2.resize(reshaped_img, output_size, interpolation=cv2.INTER_AREA)
     w, h, d = np.shape(output_imgage)
-    previous_point_x = 0
-    previous_point_y = 0
+    # calculate the center points of the lumen according to the detected mask
     point_x, point_y = cvf.detect_dark_region(mask, output_imgage)
 
-    if point_x != 'nAN':
+    if not(np.isnan(point_x)):
         cv2.circle(output_imgage, (int(point_x), int(point_y)), 45, (0, 0, 255), 2)
-    if point_y != 'nAN':
+    if not(np.isnan(point_y)):
         cv2.circle(output_imgage, (int(point_x), int(point_y)), 25, (0, 0, 255), 2)
-
-    if point_x == 'nAN':
-        point_x = previous_point_x
-    if point_y == 'nAN':
-        point_y = previous_point_y
-
-    cv2.line(output_imgage, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
-    cv2.circle(output_imgage, (int(w / 2), int(h / 2)), 20, (0, 255, 255), 3)
+        cv2.line(output_imgage, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
     # center of the image
     cv2.rectangle(output_imgage, (int(w / 2) - 3, int(h / 2) - 3), (int(w / 2) + 3, int(h / 2) + 3),  (0, 255, 255), -1)
 
