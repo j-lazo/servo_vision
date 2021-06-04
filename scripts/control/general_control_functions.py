@@ -73,6 +73,7 @@ def less_naive_control(current_z, target_x, target_y,
 def nasty_control(current_z, target_x, target_y,
                   img_shape):
     # initialize the parameters
+
     transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
     transformed_x = transformed_x * -1
     transformed_y = transformed_y
@@ -81,7 +82,9 @@ def nasty_control(current_z, target_x, target_y,
     # mapping the right zone
     unit_vector_x, unit_vector_y, theta = mapping_direction(transformed_x, transformed_y)
     magnitude = mapping_distance(target_distance)
-    target_vector = [unit_vector_x * magnitude, unit_vector_y * magnitude, current_z + magnitude * 0.1]
+    if target_distance < 50:
+        current_z = current_z + 10
+    target_vector = [unit_vector_x * magnitude, unit_vector_y * magnitude, current_z]
 
     return target_vector, theta, magnitude
 
@@ -152,7 +155,7 @@ def mapping_direction(transformed_x, transformed_y):
     step = np.pi / 8
     if theta < 0:
         theta = theta + 2 * np.pi
-    if 0 < theta < step or step * 15 <= theta <= step * 16:
+    if 0 <= theta < step or step * 15 <= theta < step * 16:
         theta = 0
         case = 1
     elif step <= theta < step * 3:
@@ -161,7 +164,7 @@ def mapping_direction(transformed_x, transformed_y):
     elif step * 3 <= theta < step * 5:
         theta = (step * 3 + step * 5) / 2
         case = 3
-    elif step * 6 <= theta < step * 7:
+    elif step * 5 <= theta < step * 7:
         theta = (step * 5 + step * 7) / 2
         case = 4
     elif step * 7 <= theta < step * 9:
@@ -178,6 +181,7 @@ def mapping_direction(transformed_x, transformed_y):
         case = 8
     else:
         case = 0
+        print(math.degrees(theta))
         print("fail case")
     # print ("pointing in the direction of:", case)
     # print ("out put theta: ", math.degrees(theta))
@@ -188,11 +192,11 @@ def mapping_direction(transformed_x, transformed_y):
 
 def mapping_distance(target_distance):
     if target_distance > 200:
-        magnitude = 10
+        magnitude = 30
     elif 200 > target_distance > 100:
-        magnitude = 3
+        magnitude = 10
     elif 100 > target_distance > 30:
-        magnitude = 1
+        magnitude = 5
     else:
         magnitude = 0
 
@@ -206,8 +210,8 @@ def jacobian_example():
     target_x, target_y = 2.0, 3.0
     new_jacobian = update_jacobian(jacobian, 0.0016, delta_q, point_x, point_y, previous_point_x, previous_point_y,
                                    beta=1)
-    print ("old jacobian matrix:", jacobian, "and the new one!:", new_jacobian)
-    print ("actuation velocity: ", jocobian_correction_velocity_control(jacobian, target_x, target_y, (400, 600), 30))
+    print("old jacobian matrix:", jacobian, "and the new one!:", new_jacobian)
+    print("actuation velocity: ", jocobian_correction_velocity_control(jacobian, target_x, target_y, (400, 600), 30))
     return 0
 
 
