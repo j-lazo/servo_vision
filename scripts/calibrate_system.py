@@ -122,6 +122,9 @@ def nasty_test():
     current_act_z = 0
     old_theta = 0
     old_magnitude = 0
+    points_x = list(range(-90, 90))
+    points_x = [x / 1 for x in points_x]
+    count = 0
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         ret, frame = cap.read()
@@ -130,13 +133,21 @@ def nasty_test():
             centre_x = int(w / 2)
             centre_y = int(h / 2)
             cv2.imshow('video', frame)
-            target_x = centre_x + 20
-            target_y = centre_y - 15
-            target_vector, theta, magnitude = gcf.nasty_control(current_act_z, target_x, target_y)
+            target_x = points_x[count]
+            target_y = points_x[count]
+            print(target_x)
+            target_vector, theta, magnitude = gcf.nasty_control(current_act_z, target_x, target_y, (h, w))
             if theta != old_theta and magnitude != old_magnitude:
+                print('actuate')
                 mc.serial_actuate(target_vector[0], target_vector[1], target_vector[2], arduino_port_1)
             old_theta = theta
             old_magnitude = magnitude
+
+        count = count + 1
+        if count == len(points_x):
+            count = 0
+            points_x = points_x[::-1]
+
         if key == ord('q'):
             mc.serial_actuate(0, 0, 0, arduino_port_1)
             break
@@ -741,6 +752,8 @@ if __name__ == "__main__":
         manual_control()
     elif args.command == 'simple_test':
         simple_test()
+    elif args.command == 'nasty_test':
+        nasty_test()
 
     else:
         raise Exception("The command written was not found")
