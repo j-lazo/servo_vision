@@ -151,8 +151,12 @@ def nasty_test():
                     h, w, d = np.shape(output_image)
                     target_vector, theta, magnitude = gcf.nasty_control(current_act_z, ptx, pty, (h, w))
                     if theta != old_theta or magnitude != old_magnitude:
-                        print('actuate')
+                        print('actuate(x, y)')
                         mc.serial_actuate(target_vector[0], target_vector[1], target_vector[2], arduino_port_1)
+                    if magnitude == 0:
+                        print('actuate(z)')
+                        current_act_z = current_act_z + 10
+                        mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
                     old_theta = theta
                     old_magnitude = magnitude
                 else:
