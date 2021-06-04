@@ -5,7 +5,7 @@ import tensorflow as tf
 
 
 def calculate_average_points(list_of_points):
-    clean_list = [point for point in list_of_points if not(not(np.isnan(point)))]
+    clean_list = [point for point in list_of_points if point != np.nan]
     average_point = np.mean(clean_list)
     return average_point
 

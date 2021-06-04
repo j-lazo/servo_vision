@@ -38,8 +38,8 @@ def detect_corners_chessboard(frame):
 
     else:
         output_image = gray
-        point_x = 'Nan'
-        point_y = 'Nan'
+        point_x = np.nan
+        point_y = np.nan
 
     return output_image, point_x, point_y
 
