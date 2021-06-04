@@ -122,31 +122,46 @@ def nasty_test():
     current_act_z = 0
     old_theta = 0
     old_magnitude = 0
-    points_x = list(range(-90, 90))
-    points_x = [x / 1 for x in points_x]
-    count = 0
+    # directory where the model is located
+    project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
+                     'phantom_lumen/results/ResUnet/'
+    folder_name = 'ResUnet_lr_0.0001_bs_16_rgb_19_05_2021_17_07'
+    # load the model and get input size of the model
+    model, input_size = cm.load_model(project_folder, folder_name)
+    center_points_x = []
+    center_points_y = []
+    frame_rate = 60
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
+        prev = 0
         ret, frame = cap.read()
-        if ret is True:
-            h, w, d = np.shape(frame)
-            centre_x = int(w / 2)
-            centre_y = int(h / 2)
-            cv2.imshow('video', frame)
-            target_x = points_x[count]
-            target_y = points_x[count]
-            print(target_x)
-            target_vector, theta, magnitude = gcf.nasty_control(current_act_z, target_x, target_y, (h, w))
-            if theta != old_theta and magnitude != old_magnitude:
-                print('actuate')
-                mc.serial_actuate(target_vector[0], target_vector[1], target_vector[2], arduino_port_1)
-            old_theta = theta
-            old_magnitude = magnitude
+        time_elapsed = time.time() - prev
 
-        count = count + 1
-        if count == len(points_x):
-            count = 0
-            points_x = points_x[::-1]
+        if ret is True:
+            if time_elapsed > 1. / frame_rate:
+                output_image, point_x, point_y = cm.detect_lumen(model, frame)
+                center_points_x.append(point_x)
+                center_points_y.append(point_y)
+                ptx = dm.calculate_average_points(center_points_x[-6:])
+                pty = dm.calculate_average_points(center_points_y[-6:])
+                # if a point is detected
+                if not (np.isnan(ptx)) and not (np.isnan(pty)):
+                    print('detected')
+                    cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
+                    h, w, d = np.shape(output_image)
+                    target_vector, theta, magnitude = gcf.nasty_control(current_act_z, ptx, pty, (h, w))
+                    if theta != old_theta or magnitude != old_magnitude:
+                        print('actuate')
+                        mc.serial_actuate(target_vector[0], target_vector[1], target_vector[2], arduino_port_1)
+                    old_theta = theta
+                    old_magnitude = magnitude
+                else:
+                    print('no target detected, stop')
+                    mc.serial_actuate(0, 0, 0, arduino_port_1)
+                #    cv2.imshow('video', frame)
+                cv2.imshow('video', output_image)
+
+            #sleep(0.08)
 
         if key == ord('q'):
             mc.serial_actuate(0, 0, 0, arduino_port_1)
@@ -256,7 +271,7 @@ def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_
     cv2.destroyAllWindows()
 
 
-def test_vision_control(detect_scenario='lu', record_video=True, abs_delta=15):
+def test_vision_control(detect_scenario='lumen', record_video=True, abs_delta=15):
     # intialize camera
     cap = cv2.VideoCapture(0)
     if record_video is True:
