@@ -30,7 +30,7 @@ int lastLSB_stepper = 0;
 
 //////////////////////////// Initialize PID controller///////////////////////////////////////
 #include <PID_v1.h>
-// PID Upper motor contrller
+// PID Upper motor controller
 #define UpperMotEnable 5 //Motor Enamble pin Runs on PWM signal
 #define UpperMotFwd  6  // Motor Forward pin
 #define UpperMotRev  7 // Motor Reverse pin
@@ -123,14 +123,14 @@ void setup() {
   TCCR1B = TCCR1B & 0b11111000 | 1;  // set 31KHz PWM to prevent motor noise
   upper_motor_PID.SetMode(AUTOMATIC);   //set PID in Auto mode
   upper_motor_PID.SetSampleTime(1);  // refresh rate of PID controller
-  upper_motor_PID.SetOutputLimits(-150, 150); // this is the MAX PWM value to move motor, here change in value reflect change in speed of motor.
+  upper_motor_PID.SetOutputLimits(-50, 50); // this is the MAX PWM value to move motor, here change in value reflect change in speed of motor.
   pinMode(SideMotEnable, OUTPUT);
   pinMode(SideMotFwd, OUTPUT); 
   pinMode(SideMotRev, OUTPUT); 
   TCCR1B = TCCR1B & 0b11111000 | 1;  // set 31KHz PWM to prevent motor noise
   side_motor_PID.SetMode(AUTOMATIC);   //set PID in Auto mode
   side_motor_PID.SetSampleTime(1);  // refresh rate of PID controller
-  side_motor_PID.SetOutputLimits(-150, 150); // this is the MAX PWM value to move motor, here change in value reflect change in speed of motor.
+  side_motor_PID.SetOutputLimits(-50, 50); // this is the MAX PWM value to move motor, here change in value reflect change in speed of motor.
   //STEPPERMotorSetup:
   pinMode(DIR_FLAG1, OUTPUT);
   pinMode(DIR_FLAG2, OUTPUT);
