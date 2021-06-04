@@ -73,12 +73,14 @@ def less_naive_control(current_z, target_x, target_y,
 def nasty_control(current_z, target_x, target_y,
                   img_shape):
     # initialize the parameters
-
-    transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
-    transformed_x = transformed_x * -1
-    transformed_y = transformed_y
-    target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
-
+    if 0 < target_x < img_shape[0] and 0 < target_y < img_shape[1]:
+        transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
+        transformed_x = transformed_x * -1
+        transformed_y = transformed_y
+        target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
+    else:
+        print("target out of boundary")
+        return [0, 0, current_z], 0, 0
     # mapping the right zone
     unit_vector_x, unit_vector_y, theta = mapping_direction(transformed_x, transformed_y)
     magnitude = mapping_distance(target_distance)
