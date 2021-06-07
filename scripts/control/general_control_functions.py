@@ -81,7 +81,7 @@ def nasty_control(target_x, target_y,
         target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     else:
         print("target out of boundary")
-        return [0, 0], 0, 0
+        return [0.0, 0.0], 0.0, 0.0
 
     # mapping the right zone
     unit_vector_x, unit_vector_y, theta = mapping_direction(transformed_x, transformed_y)
