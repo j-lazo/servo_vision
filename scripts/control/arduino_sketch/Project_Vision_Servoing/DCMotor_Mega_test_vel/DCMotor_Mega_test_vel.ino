@@ -49,7 +49,7 @@ long timeArray[10] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 int indexArray = 0;
 
 
-double upper_kp = 3 , upper_ki = 40 , upper_kd = 0;
+double upper_kp = 2.4 , upper_ki = 40 , upper_kd = 0;
 double upper_input = 0, upper_output = 0, upper_setpoint = 0;
 long REV_upper = 0;
 int user_input_upper = 0;
@@ -123,14 +123,14 @@ void setup() {
   TCCR1B = TCCR1B & 0b11111000 | 1;  // set 31KHz PWM to prevent motor noise
   upper_motor_PID.SetMode(AUTOMATIC);   //set PID in Auto mode
   upper_motor_PID.SetSampleTime(1);  // refresh rate of PID controller
-  upper_motor_PID.SetOutputLimits(-50, 50); // this is the MAX PWM value to move motor, here change in value reflect change in speed of motor.
+  upper_motor_PID.SetOutputLimits(-100, 100); // this is the MAX PWM value to move motor, here change in value reflect change in speed of motor.
   pinMode(SideMotEnable, OUTPUT);
   pinMode(SideMotFwd, OUTPUT); 
   pinMode(SideMotRev, OUTPUT); 
   TCCR1B = TCCR1B & 0b11111000 | 1;  // set 31KHz PWM to prevent motor noise
   side_motor_PID.SetMode(AUTOMATIC);   //set PID in Auto mode
   side_motor_PID.SetSampleTime(1);  // refresh rate of PID controller
-  side_motor_PID.SetOutputLimits(-50, 50); // this is the MAX PWM value to move motor, here change in value reflect change in speed of motor.
+  side_motor_PID.SetOutputLimits(-100, 100); // this is the MAX PWM value to move motor, here change in value reflect change in speed of motor.
   //STEPPERMotorSetup:
   pinMode(DIR_FLAG1, OUTPUT);
   pinMode(DIR_FLAG2, OUTPUT);
@@ -245,6 +245,7 @@ void loop() {
 /////////////////////////////////////////////////////////////////////////////////////////////////////
   
 /////////////////////////////////////////////////////////////////////////////////////////////////////
+
   REV_upper = map (user_input_upper, -200, 200, -600, 600); // mapping degree into pulse
   REV_side = map (user_input_side, -200, 200, -600, 600); // mapping degree into pulse
   DIST_stepper = map(user_input_stepper, -500, 500, -400000, 400000); // 0.01 mm ----> encoder pulse
