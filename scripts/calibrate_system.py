@@ -114,7 +114,23 @@ def simple_test():
 
 
 def nasty_test():
+    SETTINGS = {
+        "tracker type": "aurora",
+        "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
+    }
+    print('connecting with sensor...')
+    TRACKER = NDITracker(SETTINGS)
+    TRACKER.start_tracking()
 
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    date_experiment = datetime.datetime.now()
+
+    results_folder = ''.join([os.getcwd(), '/results/experiment_', date_experiment.strftime("%d_%m_%Y_%H_%M"), '/'])
+    if not os.path.isdir(results_folder):
+        os.mkdir(results_folder)
+
+    name_video = results_folder + 'experiment_lumen_output_video' + date_experiment.strftime("%d_%m_%Y_%H_%M")
+    out = cv2.VideoWriter(name_video + '_.avi', fourcc, 20.0, (300, 300))
     cap = cv2.VideoCapture(0)
     port_arduino = find_arduino.find_arduino()
     print('Arduino detected at:', port_arduino)
@@ -130,46 +146,95 @@ def nasty_test():
     model, input_size = cm.load_model(project_folder, folder_name)
     center_points_x = []
     center_points_y = []
+    sensor_points_x = []
+    sensor_points_y = []
+    sensor_points_z = []
+    time_line = []
+    joint_variable_values = []
+    target_vectors = []
+    thetas = []
+    magnitudes = []
+    actuators_values = []
     frame_rate = 60
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         prev = 0
         ret, frame = cap.read()
         time_elapsed = time.time() - prev
+        port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
 
         if ret is True:
+            time_line.append(datetime.datetime.now())
             if time_elapsed > 1. / frame_rate:
                 output_image, point_x, point_y = cm.detect_lumen(model, frame)
                 center_points_x.append(point_x)
                 center_points_y.append(point_y)
+                for i, t in enumerate(tracking):
+                    sensor_points_x.append(t[0][3])
+                    sensor_points_y.append(t[1][3])
+                    sensor_points_z.append(t[2][3])
+
                 ptx = dm.calculate_average_points(center_points_x[-6:])
                 pty = dm.calculate_average_points(center_points_y[-6:])
                 # if a point is detected
+                current_act_joint_variable = mc.serial_request(arduino_port_1)
+                joint_variable_values.append(current_act_joint_variable)
                 if not (np.isnan(ptx)) and not (np.isnan(pty)):
                     print('detected')
                     cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
                     h, w, d = np.shape(output_image)
-                    target_vector, theta, magnitude = gcf.nasty_control(current_act_z, ptx, pty, (h, w))
+                    target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
+                    target_vectors.append(target_vector)
+                    thetas.append(theta)
+                    magnitudes.append(magnitude)
                     if theta != old_theta or magnitude != old_magnitude:
                         print('actuate(x, y)')
-                        mc.serial_actuate(target_vector[0], target_vector[1], target_vector[2], arduino_port_1)
+                        mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+                        sleep(0.2)
+                        act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
                     if magnitude == 0:
                         print('actuate(z)')
-                        current_act_z = current_act_z + 10
-                        mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+                        current_act_z = current_act_z + 2
+                        act = mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+
+                    actuators_values.append(act)
                     old_theta = theta
                     old_magnitude = magnitude
                 else:
+                    actuators_values.append([np.nan, np.nan, np.nan])
+                    target_vectors.append([np.nan, np.nan])
+                    thetas.append(np.nan)
+                    magnitudes.append(np.nan)
                     print('no target detected, stop')
-                    mc.serial_actuate(0, 0, 0, arduino_port_1)
+                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
                 #    cv2.imshow('video', frame)
                 cv2.imshow('video', output_image)
+                out.write(output_image)
 
             #sleep(0.08)
 
         if key == ord('q'):
             mc.serial_actuate(0, 0, 0, arduino_port_1)
             break
+
+    data_vector = [center_points_x,
+                   center_points_y,
+                   sensor_points_x,
+                   sensor_points_y,
+                   sensor_points_z,
+                   time_line,
+                   joint_variable_values,
+                   target_vectors,
+                   thetas,
+                   magnitudes,
+                   actuators_values]
+
+    dm.save_data(data_vector, date_experiment)
+    TRACKER.stop_tracking()
+    TRACKER.close()
+    out.release()
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 def manual_control():
@@ -190,16 +255,16 @@ def manual_control():
             cv2.imshow('video', frame)
             if key == 83:
                 print('right')
-                mc.serial_actuate(-defined_speed, 0, 0, arduino_port_1)
+                mc.serial_actuate(-defined_speed, 0, z, arduino_port_1)
             elif key == 81:
                 print('left')
-                mc.serial_actuate(defined_speed, 0, 0, arduino_port_1)
+                mc.serial_actuate(defined_speed, 0, z, arduino_port_1)
             elif key == 82:
                 print('up')
-                mc.serial_actuate(0, defined_speed, 0, arduino_port_1)
+                mc.serial_actuate(0, defined_speed, z, arduino_port_1)
             elif key == 84:
                 print('down')
-                mc.serial_actuate(0, -defined_speed, 0, arduino_port_1)
+                mc.serial_actuate(0, -defined_speed, z, arduino_port_1)
             elif key == ord('f'):
                 print('forward')
                 z = z + 1
@@ -211,15 +276,18 @@ def manual_control():
 
             elif key == ord('s'):
                 print('stop')
-                mc.serial_actuate(0, 0, 0, arduino_port_1)
+                mc.serial_actuate(0, 0, z, arduino_port_1)
             #else:
                 #mc.serial_actuate(0, 0, z, arduino_port_1)
 
         sleep(0.08)
 
         if key == ord('q'):
-            mc.serial_actuate(0, 0, 0, arduino_port_1)
+            mc.serial_actuate(0, 0, z, arduino_port_1)
             break
+
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 def test_lumen_detection(project_folder='/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
