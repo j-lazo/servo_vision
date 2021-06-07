@@ -278,8 +278,12 @@ def calc_histograms_and_center(mask, image, method='direct_mask'):
                 new_hulls.append(cv2.convexHull(new_contours[i], False))
             if new_contours:
                 M = cv2.moments(new_contours[0])
-                point_x = int(M["m10"] / M["m00"])
-                point_y = int(M["m01"] / M["m00"])
+                if M["m00"] != 0:
+                    point_x = int(M["m10"] / M["m00"])
+                    point_y = int(M["m01"] / M["m00"])
+                else:
+                    point_x = np.nan
+                    point_y = np.nan
             else:
                 point_x = np.nan
                 point_y = np.nan
