@@ -2,7 +2,6 @@ import math
 import numpy as np
 import random
 import time
-import mega_communication as mc
 
 
 def transform_to_img_space(point_x, point_y, shape_img):
@@ -92,8 +91,7 @@ def nasty_control(target_x, target_y,
     return target_vector, theta, magnitude
 
 
-def discrete_delay_control(current_act_z, target_x, target_y,
-                           img_shape, absolute_delta=30, p_gain=1.0):
+def discrete_delay_control(target_x, target_y, img_shape, absolute_delta=30, p_gain=1.0):
     if 0 < target_x < img_shape[0] and 0 < target_y < img_shape[1]:
         transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
         transformed_x = transformed_x * -1
@@ -201,12 +199,18 @@ def mapping_direction(transformed_x, transformed_y):
 
 
 def mapping_distance(target_distance):
-    if target_distance > 200:
+    """if target_distance > 200:
         magnitude = 30
     elif 200 > target_distance > 100:
         magnitude = 10
     elif 100 > target_distance > 30:
         magnitude = 5
+    else:
+        magnitude = 0"""
+    if target_distance > 80:
+        magnitude = 2
+    elif 80 >= target_distance > 22:
+        magnitude = 3.5
     else:
         magnitude = 0
 
