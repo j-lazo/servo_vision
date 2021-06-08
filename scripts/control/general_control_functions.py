@@ -2,6 +2,7 @@ import math
 import numpy as np
 import random
 import time
+import mega_communication as mc
 
 
 def transform_to_img_space(point_x, point_y, shape_img):
@@ -91,19 +92,26 @@ def nasty_control(target_x, target_y,
     return target_vector, theta, magnitude
 
 
-def jocobian_correcion_control(new_jacobian, target_x, target_y, img_shape, absolute_delta, user_define_step=1):
-    transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
-    transformed_x = transformed_x * -1
-    target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
-    target_vector = np.array([[transformed_x], [transformed_y]])
-    inverse_jacobian = np.linalg.inv(new_jacobian)
-    actuate_vector = np.matul(inverse_jacobian, target_vector).tolist()  # make it back a list.
-
-    if target_distance > absolute_delta:
-        actuate_vector_z = [0]
+def discrete_delay_control(current_act_z, target_x, target_y,
+                           img_shape, absolute_delta=30, p_gain=1.0):
+    if 0 < target_x < img_shape[0] and 0 < target_y < img_shape[1]:
+        transformed_x, transformed_y = transform_to_img_space(target_x, target_y, img_shape)
+        transformed_x = transformed_x * -1
+        target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     else:
-        actuate_vector_z = [1]
-    return actuate_vector + actuate_vector_z  # Here we return a list!
+        print("target out of boundary")
+        return [0.0, 0.0], 0.0, 0.0
+    target_vector = np.array([transformed_x, transformed_y])
+#    inverse_jacobian = np.linalg.inv(new_jacobian)
+#    actuate_vector = np.matul(inverse_jacobian, target_vector).tolist()  # make it back a list.
+
+    magnitude = mapping_distance(target_distance)
+    p_gain = magnitude / 30.0
+    theta = math.atan2(float(transformed_y), float(transformed_x))
+    unit_vector = [np.cos(theta), np.sin(theta)]
+    target_vector = [transformed_x * p_gain, transformed_y  * p_gain]
+
+    return target_vector, theta, magnitude  # Here we return a list!
 
 
 def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_shape, absolute_delta,
