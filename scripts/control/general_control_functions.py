@@ -114,22 +114,23 @@ def discrete_delay_control(target_x, target_y, img_shape, absolute_delta=30, p_g
 
 def discrete_jacobian_control(target_x, target_y, img_shape, absolute_delta=30, p_gain=1.0):
     if 0 < target_x < img_shape[0] and 0 < target_y < img_shape[1]:
-        transformed_x = target_x - img_shape[0] / 2
-        transformed_y = target_y - img_shape[1] / 2
+        transformed_x = -(target_x - img_shape[0] / 2)
+        transformed_y = -(target_y - img_shape[1] / 2)
         target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     else:
         print("target out of boundary")
         return [0.0, 0.0], 0.0, 0.0
     inv_jacobian = [[0.81, 0.26], [-0.037, 0.33]]
     target_vector = [0, 0]
-    target_vector[0] = inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y
-    target_vector[1] = inv_jacobian[1][0] * transformed_x + inv_jacobian[1][1] * transformed_y
     magnitude = mapping_distance(target_distance)
     p_gain = magnitude / 30.0
     theta = math.atan2(float(transformed_y), float(transformed_x))
     unit_vector = [np.cos(theta), np.sin(theta)]
+    target_vector[0] = p_gain*(inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y)
+    target_vector[1] = p_gain*(inv_jacobian[1][0] * transformed_x + inv_jacobian[1][1] * transformed_y)
 
-    return target_vector, theta, magnitude  # Here we return a list!
+    return target_vector, theta, magnitude  # Here we return a list
+
 
 def update_jacobian_control(jacobian_mat, target_x, target_y, img_shape, absolute_delta=30, p_gain=1.0):
     if 0 < target_x < img_shape[0] and 0 < target_y < img_shape[1]:
