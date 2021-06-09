@@ -21,6 +21,62 @@ import time
 from general_functions import data_managament as dm
 
 
+def get_ground_truth_path(trajectory=4):
+    type_trajectory = ['straight_line', 'right_curve', 'left_curve', 'right_s', 'left_s']
+    SETTINGS = {
+        "tracker type": "aurora",
+        "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
+    }
+    print('connecting with sensor...')
+    port_arduino = find_arduino.find_arduino()
+    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+    print('ATLASCOPE detected at port:', port_arduino)
+    TRACKER = NDITracker(SETTINGS)
+    TRACKER.start_tracking()
+    cap = cv2.VideoCapture(0)
+
+    sensor_points_x = []
+    sensor_points_y = []
+    sensor_points_z = []
+    time_line = []
+    date_experiment = datetime.datetime.now()
+    z = 0
+    z_vals = []
+    act_vals = []
+    while cap.isOpened():
+        z = z - 2
+        z_vals.append(z)
+        ret, frame = cap.read()
+        cv2.imshow('video', frame)
+        key = cv2.waitKey(1) & 0xFF
+        port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
+        mc.serial_actuate(0, 0, z, arduino_port_1)
+        act = mc.serial_request(arduino_port_1)
+        for i, t in enumerate(tracking):
+            #print(t[0][3], t[1][3], t[2][3])
+            sensor_points_x.append(t[0][3])
+            sensor_points_y.append(t[1][3])
+            sensor_points_z.append(t[2][3])
+
+            time_line.append(datetime.datetime.now())
+
+        if sensor_points_z[-1] <= -408 and sensor_points_z[-1] != np.nan:
+            mc.serial_actuate(0, 0, act[2]/800, arduino_port_1)
+            break
+
+        if key == ord('q'):
+            break
+
+    data_vector = [time_line,
+                   sensor_points_x,
+                   sensor_points_y,
+                   sensor_points_z,
+                   ]
+    dm.save_data_sensors(data_vector, date_experiment, type_trajectory[trajectory])
+    TRACKER.stop_tracking()
+    TRACKER.close()
+    cap.release()
+
 def general_calibration():
     from tqdm import tqdm
     port_arduino = find_arduino.find_arduino()
@@ -52,7 +108,7 @@ def general_calibration():
 
 
 def determine_q_function():
-    directory_data = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
+    directory_data = os.getcwd() + '/data/calibration/'
     cf.plot_data_equivalence(directory_data)
 
 
@@ -156,17 +212,19 @@ def nasty_test():
     magnitudes = []
     actuators_values = []
     frame_rate = 60
+    acumulated_time = datetime.timedelta(seconds=0)
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         prev = 0
+        init_time_epoch = datetime.datetime.now()
         ret, frame = cap.read()
         time_elapsed = time.time() - prev
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
-
         if ret is True:
             time_line.append(datetime.datetime.now())
             if time_elapsed > 1. / frame_rate:
                 output_image, point_x, point_y = cm.detect_lumen(model, frame)
+                #output_image, point_x, point_y = cvf.detect_corners_chessboard(frame)
                 center_points_x.append(point_x)
                 center_points_y.append(point_y)
                 for i, t in enumerate(tracking):
@@ -179,7 +237,40 @@ def nasty_test():
                 # if a point is detected
                 current_act_joint_variable = mc.serial_request(arduino_port_1)
                 joint_variable_values.append(current_act_joint_variable)
+
                 if not (np.isnan(ptx)) and not (np.isnan(pty)):
+                    print('detected')
+                    cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
+                    h, w, d = np.shape(output_image)
+                    target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
+                    target_vectors.append(target_vector)
+                    thetas.append(theta)
+                    magnitudes.append(magnitude)
+
+                    delta_time = (datetime.datetime.now()-init_time_epoch)
+                    if acumulated_time > datetime.timedelta(seconds=0.1) and magnitude > 0:
+                        act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
+                        acumulated_time = datetime.timedelta(seconds=0)
+                        actuators_values.append(act)
+                    elif magnitude == 0:
+                        current_act_z = current_act_z + 1
+                        act = mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+                        acumulated_time = acumulated_time + delta_time
+                        actuators_values.append(act)
+                    else:
+                        acumulated_time = acumulated_time + delta_time
+                        actuators_values.append([np.nan, np.nan, np.nan])
+
+                else:
+                    actuators_values.append([np.nan, np.nan, np.nan])
+                    target_vectors.append([np.nan, np.nan])
+                    thetas.append(np.nan)
+                    magnitudes.append(np.nan)
+                    print('no target detected, stop')
+                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+
+                
+                """if not (np.isnan(ptx)) and not (np.isnan(pty)):
                     print('detected')
                     cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
                     h, w, d = np.shape(output_image)
@@ -206,7 +297,7 @@ def nasty_test():
                     thetas.append(np.nan)
                     magnitudes.append(np.nan)
                     print('no target detected, stop')
-                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)"""
                 #    cv2.imshow('video', frame)
                 cv2.imshow('video', output_image)
                 out.write(output_image)
@@ -228,7 +319,6 @@ def nasty_test():
                    thetas,
                    magnitudes,
                    actuators_values]
-
     dm.save_data(data_vector, date_experiment)
     TRACKER.stop_tracking()
     TRACKER.close()
@@ -276,14 +366,19 @@ def manual_control():
 
             elif key == ord('s'):
                 print('stop')
-                mc.serial_actuate(0, 0, z, arduino_port_1)
+                z_stop = mc.serial_request(arduino_port_1)[2]/800
+                z = mc.serial_request(arduino_port_1)[2]/800
+                mc.serial_actuate(0, 0, z_stop, arduino_port_1)
             #else:
                 #mc.serial_actuate(0, 0, z, arduino_port_1)
 
         sleep(0.08)
 
         if key == ord('q'):
-            mc.serial_actuate(0, 0, z, arduino_port_1)
+            sleep(0.2)
+            z_stop = mc.serial_request(arduino_port_1)[2]/800
+            print('test finished')
+            mc.serial_actuate(0, 0, z_stop, arduino_port_1)
             break
 
     cap.release()
@@ -600,6 +695,7 @@ def test_sensor():
 
     while True:
         emt.test(TRACKER)
+
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
@@ -721,7 +817,7 @@ def acquire_data_camera_calibration(save_dir):
 
     # This will return video from the first webcam on your computer.
     cap = cv2.VideoCapture(0)
-    #save_dir = '/home/nearlab/Jorge/current_work/robot_vision/data/calibration/'
+    save_dir = os.getcwd() + '/data/calibration/'
     save_imgs_dir = save_dir + '/image_list/'
     save_pos_dir = save_dir + '/pos_list/'
     print(os.path.isdir(save_dir + '/pos_list/'))
@@ -813,7 +909,7 @@ if __name__ == "__main__":
     # Configurations
     if args.command == "test_camera":
         test_camera()
-    elif args.command == 'test_sensors':
+    elif args.command == 'test_sensor':
         test_sensor()
     elif args.command == "test_actuators":
         test_actuators()
@@ -841,6 +937,8 @@ if __name__ == "__main__":
         simple_test()
     elif args.command == 'nasty_test':
         nasty_test()
+    elif args.command == 'get_ground_truth_path':
+        get_ground_truth_path()
 
     else:
         raise Exception("The command written was not found")
