@@ -140,7 +140,7 @@ def update_jacobian_control(jacobian_mat, target_x, target_y, img_shape, absolut
     else:
         print("target out of boundary")
         return [0.0, 0.0], 0.0, 0.0
-    jacobian = [[0.33, -0.26], [0.037, 0.81]]
+
     inv_jacobian = [[jacobian_mat[1][1], -jacobian_mat[0][1] ], -[jacobian_mat[1][0], jacobian_mat[0][0]]]
     target_vector = [0, 0]
     target_vector[0] = inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y
@@ -172,11 +172,15 @@ def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_s
     return actuate_vector + actuate_vector_z  # Here we return a list!
 
 
-def update_jacobian(current_jacobian, delta_q, point_x, point_y, previous_point_x, previous_point_y,
+def update_jacobian(current_jacobian, previous_qs, point_x, point_y, previous_point_x, previous_point_y,
                     beta=0.05):
+    zipped_lists = zip(previous_qs[-2], previous_qs[-1])
+    delta_q = [x - y for (x, y) in zipped_lists]
+
     delta_q = np.array(delta_q).astype(float)
     delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y]).astype(
         float)
+    current_jacobian = np.array(current_jacobian)
     if delta_q[0] == 0 and delta_q[1] == 0:
         new_jacobian = current_jacobian
     else:
@@ -191,7 +195,7 @@ def update_jacobian(current_jacobian, delta_q, point_x, point_y, previous_point_
             delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q,
                                                                                                           delta_q)
 
-    return new_jacobian
+    return new_jacobian.tolist()
 
 
 def jacobian_transformation(transformed_x, transoformed_y):
