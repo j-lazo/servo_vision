@@ -77,6 +77,7 @@ def get_ground_truth_path(trajectory=4):
     TRACKER.close()
     cap.release()
 
+
 def general_calibration():
     from tqdm import tqdm
     port_arduino = find_arduino.find_arduino()
@@ -211,8 +212,12 @@ def nasty_test():
     thetas = []
     magnitudes = []
     actuators_values = []
+    filtered_points_x = []
+    filtered_points_y = []
+    jacobian_matrices = []
     frame_rate = 60
     acumulated_time = datetime.timedelta(seconds=0)
+    jacobian_matrix = [[0.33, -0.26], [0.037, 0.81]]
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         prev = 0
@@ -234,11 +239,54 @@ def nasty_test():
 
                 ptx = dm.calculate_average_points(center_points_x[-6:])
                 pty = dm.calculate_average_points(center_points_y[-6:])
+                filtered_points_x.append(ptx)
+                filtered_points_y.append(pty)
                 # if a point is detected
                 current_act_joint_variable = mc.serial_request(arduino_port_1)
                 joint_variable_values.append(current_act_joint_variable)
+                # On-line update Jacobian conrtol
 
                 if not (np.isnan(ptx)) and not (np.isnan(pty)):
+                    print('detected')
+                    cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
+                    h, w, d = np.shape(output_image)
+                    if len(current_act_joint_variable) > 2:
+                        jacobian_matrix = gcf.update_jacobian(jacobian_matrix, current_act_joint_variable[-2:], ptx, pty,
+                                                              filtered_points_x[-2], filtered_points_y[-2])
+
+                    target_vector, theta, magnitude = gcf.update_jacobian_control(jacobian_matrix, ptx, pty, (h, w))
+                    jacobian_matrices.append(jacobian_matrix)
+
+                    target_vectors.append(target_vector)
+                    thetas.append(theta)
+                    magnitudes.append(magnitude)
+
+                    delta_time = (datetime.datetime.now()-init_time_epoch)
+                    if acumulated_time > datetime.timedelta(seconds=0.1) and magnitude > 0:
+                        act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
+                        acumulated_time = datetime.timedelta(seconds=0)
+                        actuators_values.append(act)
+
+                    elif magnitude == 0:
+                        current_act_z = current_act_z + 1
+                        act = mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+                        acumulated_time = acumulated_time + delta_time
+                        actuators_values.append(act)
+                    else:
+                        acumulated_time = acumulated_time + delta_time
+                        actuators_values.append([np.nan, np.nan, np.nan])
+
+                else:
+                    actuators_values.append([np.nan, np.nan, np.nan])
+                    target_vectors.append([np.nan, np.nan])
+                    thetas.append(np.nan)
+                    magnitudes.append(np.nan)
+                    print('no target detected, stop')
+                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+
+
+                # Constant Jacobian control and descreet control just change the control function
+                """if not (np.isnan(ptx)) and not (np.isnan(pty)):
                     print('detected')
                     cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
                     h, w, d = np.shape(output_image)
@@ -267,9 +315,9 @@ def nasty_test():
                     thetas.append(np.nan)
                     magnitudes.append(np.nan)
                     print('no target detected, stop')
-                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)"""
 
-                
+                # Really nasty control
                 """if not (np.isnan(ptx)) and not (np.isnan(pty)):
                     print('detected')
                     cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
@@ -308,17 +356,20 @@ def nasty_test():
             mc.serial_actuate(0, 0, 0, arduino_port_1)
             break
 
-    data_vector = [center_points_x,
+    data_vector = [time_line,
+                   center_points_x,
                    center_points_y,
+                   filtered_points_x,
+                   filtered_points_y,
                    sensor_points_x,
                    sensor_points_y,
                    sensor_points_z,
-                   time_line,
                    joint_variable_values,
                    target_vectors,
                    thetas,
                    magnitudes,
-                   actuators_values]
+                   actuators_values,
+                   jacobian_matrices]
     dm.save_data(data_vector, date_experiment)
     TRACKER.stop_tracking()
     TRACKER.close()
