@@ -14,9 +14,7 @@ def plot_data_equivalence(directory_data):
     list_sensor_data = sorted(os.listdir(dir_sensor_data))
     list_joints_position = sorted(os.listdir(dir_joints_data))
 
-    img_points_list = []
-    sensor_point_list = []
-    joints_point_list = []
+
     points_x1 = []
     points_y1 = []
     points_x2 = []
@@ -27,13 +25,12 @@ def plot_data_equivalence(directory_data):
     joints_y2 = []
     sensors_x = []
     sensors_y = []
-
     pattern_size = (7, 5)
-    for i, image_name in enumerate(list_imgs[1:7]):
-        print(image_name, 'q1')
+    for i, image_name in enumerate(list_imgs[1:9]):
+        print(i, image_name, 'q1')
         image = cv2.imread(dir_imgs + image_name)
-        matrix = read_matrix_file(dir_sensor_data + list_sensor_data[i+1])
-        joints = read_vector_file(dir_joints_data + list_joints_position[i+1])
+        matrix = read_matrix_file(dir_sensor_data + list_sensor_data[i])
+        joints = read_vector_file(dir_joints_data + list_joints_position[i])
         print(joints)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         f, corners = gf.find_corners(gray, pattern_size)
@@ -52,12 +49,12 @@ def plot_data_equivalence(directory_data):
         points_x1.append(point_x[7])
         joints_y1.append(int(joints[1]))
 
-
-    for i, image_name in enumerate(list_imgs[7:]):
-        print(image_name, 'q2')
+    starting_point = 10
+    for i, image_name in enumerate(list_imgs[starting_point:]):
+        print(i, image_name, 'q2')
         image = cv2.imread(dir_imgs + image_name)
-        matrix = read_matrix_file(dir_sensor_data + list_sensor_data[i+7])
-        joints = read_vector_file(dir_joints_data + list_joints_position[i+7])
+        matrix = read_matrix_file(dir_sensor_data + list_sensor_data[i+starting_point-1])
+        joints = read_vector_file(dir_joints_data + list_joints_position[i+starting_point-1])
         print(joints)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         f, corners = gf.find_corners(gray, pattern_size)
@@ -70,28 +67,32 @@ def plot_data_equivalence(directory_data):
 
         joints_x2.append(int(joints[0]))
         sensors_x.append(float(matrix[1][3]))
-        sensors_y.append(float(-matrix[0][3]))
+        sensors_y.append(float(matrix[0][3]))
         points_y2.append(point_y[7])
         points_x2.append(point_x[7])
         joints_y2.append(int(joints[1]))
 
     plt.figure()
     plt.subplot(221)
+    print(joints_x1, points_x1)
     plt.plot(joints_x1, points_x1, 'ro')
     plt.ylabel('points x (pixels)')
-    plt.xlabel('joints values')
+    plt.xlabel('joints x vs points x Q1')
     plt.subplot(222)
+    print(joints_y2, points_x2)
     plt.plot(joints_y2, points_x2, 'ro')
     plt.ylabel('points y (pixels)')
-    plt.xlabel('joints values')
+    plt.xlabel('joints y vs points Q1')
     plt.subplot(223)
+    print(joints_x1, points_y1)
     plt.plot(joints_x1, points_y1, 'ro')
     plt.ylabel('points x (pixels)')
-    plt.xlabel('sensor values')
+    plt.xlabel('joints vs points Q2')
     plt.subplot(224)
+    print(joints_y2, points_y2)
     plt.plot(joints_y2, points_y2, 'ro')
     plt.ylabel('points y (pixels)')
-    plt.xlabel('sensor values')
+    plt.xlabel('joints vs points Q2')
     plt.show()
 
 
