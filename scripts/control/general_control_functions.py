@@ -246,28 +246,33 @@ def mapping_direction(transformed_x, transformed_y):
 
 
 def mapping_distance(target_distance):
-    """if target_distance > 200:
+    # nasty
+    if target_distance > 200:
         magnitude = 30
     elif 200 > target_distance > 100:
         magnitude = 10
     elif 100 > target_distance > 30:
         magnitude = 5
     else:
-        magnitude = 0"""
+        magnitude = 0
+
+    # descrete
     """if target_distance > 80:
         magnitude = 2
     elif 80 >= target_distance > 22:
         magnitude = 3.5
     else:
         magnitude = 0"""
-    if target_distance > 80:
+
+    # jacobian
+    """if target_distance > 80:
         magnitude = 3
     elif 80 >= target_distance > 50:
         magnitude = 4.5
     elif 50 >= target_distance > 22:
         magnitude = 6.5 
     else:
-        magnitude = 0
+        magnitude = 0"""
 
 
     return magnitude
