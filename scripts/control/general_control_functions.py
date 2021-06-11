@@ -100,14 +100,14 @@ def discrete_delay_control(target_x, target_y, img_shape, absolute_delta=30, p_g
         print("target out of boundary")
         return [0.0, 0.0], 0.0, 0.0
     target_vector = np.array([transformed_x, transformed_y])
-#    inverse_jacobian = np.linalg.inv(new_jacobian)
-#    actuate_vector = np.matul(inverse_jacobian, target_vector).tolist()  # make it back a list.
+    #    inverse_jacobian = np.linalg.inv(new_jacobian)
+    #    actuate_vector = np.matul(inverse_jacobian, target_vector).tolist()  # make it back a list.
 
     magnitude = mapping_distance(target_distance)
     p_gain = magnitude / 30.0
     theta = math.atan2(float(transformed_y), float(transformed_x))
     unit_vector = [np.cos(theta), np.sin(theta)]
-    target_vector = [transformed_x * p_gain, transformed_y  * p_gain]
+    target_vector = [transformed_x * p_gain, transformed_y * p_gain]
 
     return target_vector, theta, magnitude  # Here we return a list!
 
@@ -126,32 +126,31 @@ def discrete_jacobian_control(target_x, target_y, img_shape, absolute_delta=30, 
     p_gain = magnitude / 30.0
     theta = math.atan2(float(transformed_y), float(transformed_x))
     unit_vector = [np.cos(theta), np.sin(theta)]
-    target_vector[0] = p_gain*(inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y)
-    target_vector[1] = p_gain*(inv_jacobian[1][0] * transformed_x + inv_jacobian[1][1] * transformed_y)
+    target_vector[0] = p_gain * (inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y)
+    target_vector[1] = p_gain * (inv_jacobian[1][0] * transformed_x + inv_jacobian[1][1] * transformed_y)
 
     return target_vector, theta, magnitude  # Here we return a list
 
 
 def update_jacobian_control(jacobian_mat, target_x, target_y, img_shape, absolute_delta=30, p_gain=1.0):
     if 0 < target_x < img_shape[0] and 0 < target_y < img_shape[1]:
-        transformed_x = target_x - img_shape[0] / 2
-        transformed_y = target_y - img_shape[1] / 2
+        transformed_x = -(target_x - img_shape[0] / 2)
+        transformed_y = -(target_y - img_shape[1] / 2)
         target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
     else:
         print("target out of boundary")
         return [0.0, 0.0], 0.0, 0.0
 
-    inv_jacobian = [[jacobian_mat[1][1], -jacobian_mat[0][1] ], -[jacobian_mat[1][0], jacobian_mat[0][0]]]
+    inv_jacobian = [[jacobian_mat[1][1], -jacobian_mat[0][1]], [-jacobian_mat[1][0], jacobian_mat[0][0]]]
     target_vector = [0, 0]
-    target_vector[0] = inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y
-    target_vector[1] = inv_jacobian[1][0] * transformed_x + inv_jacobian[1][1] * transformed_y
     magnitude = mapping_distance(target_distance)
     p_gain = magnitude / 30.0
     theta = math.atan2(float(transformed_y), float(transformed_x))
     unit_vector = [np.cos(theta), np.sin(theta)]
+    target_vector[0] = p_gain * (inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y)
+    target_vector[1] = 2.1 * p_gain * (inv_jacobian[1][0] * transformed_x + inv_jacobian[1][1] * transformed_y)
 
     return target_vector, theta, magnitude  # Here we return a list!
-
 
 
 def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_shape, absolute_delta,
@@ -174,23 +173,25 @@ def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_s
 
 def update_jacobian(current_jacobian, previous_qs, point_x, point_y, previous_point_x, previous_point_y,
                     beta=0.05):
-    zipped_lists = zip(previous_qs[-2], previous_qs[-1])
-    delta_q = [x - y for (x, y) in zipped_lists]
+    print(previous_qs)
+    zipped_lists = zip(previous_qs[-1], previous_qs[-2])
+    delta_q = [x - y for (x, y) in zipped_lists][:2]
 
     delta_q = np.array(delta_q).astype(float)
     delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y]).astype(
         float)
     current_jacobian = np.array(current_jacobian)
+    print('delta q', delta_q)
     if delta_q[0] == 0 and delta_q[1] == 0:
         new_jacobian = current_jacobian
     else:
-        print ("current_jacobian:", current_jacobian)
-        print ("delta_actual_displacement:", delta_actual_displacement)
-        print ("delta_q:", delta_q)
-        print ("JkQk:", np.matmul(current_jacobian, delta_q))
-        print ("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
-        print ("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
-        print ("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
+        print("current_jacobian:", current_jacobian)
+        print("delta_actual_displacement:", delta_actual_displacement)
+        print("delta_q:", delta_q)
+        print("JkQk:", np.matmul(current_jacobian, delta_q))
+        print("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
+        print("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
+        print("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
         new_jacobian = current_jacobian + beta * np.outer(
             delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q,
                                                                                                           delta_q)
@@ -203,7 +204,7 @@ def jacobian_transformation(transformed_x, transoformed_y):
 
 
 def mapping_direction(transformed_x, transformed_y):
-    theta = math.atan2(float(transformed_y),  float(transformed_x))
+    theta = math.atan2(float(transformed_y), float(transformed_x))
     # print ("input theta: ", math.degrees(theta))
     # print ("x in cartesian:", transformed_x, "y in cartesian:", transformed_y)
     step = np.pi / 8
@@ -253,12 +254,21 @@ def mapping_distance(target_distance):
         magnitude = 5
     else:
         magnitude = 0"""
-    if target_distance > 80:
+    """if target_distance > 80:
         magnitude = 2
     elif 80 >= target_distance > 22:
         magnitude = 3.5
     else:
+        magnitude = 0"""
+    if target_distance > 80:
+        magnitude = 3
+    elif 80 >= target_distance > 50:
+        magnitude = 4.5
+    elif 50 >= target_distance > 22:
+        magnitude = 6.5 
+    else:
         magnitude = 0
+
 
     return magnitude
 
