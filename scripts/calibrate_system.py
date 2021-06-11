@@ -21,61 +21,96 @@ import time
 from general_functions import data_managament as dm
 
 
-def get_ground_truth_path(trajectory=4):
+def get_ground_truth_path(trajectory=3, number_of_times=10):
     type_trajectory = ['straight_line', 'right_curve', 'left_curve', 'right_s', 'left_s']
     SETTINGS = {
         "tracker type": "aurora",
         "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
     }
     print('connecting with sensor...')
+
+    TRACKER = NDITracker(SETTINGS)
+    TRACKER.start_tracking()
+
     port_arduino = find_arduino.find_arduino()
     arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
     print('ATLASCOPE detected at port:', port_arduino)
-    TRACKER = NDITracker(SETTINGS)
-    TRACKER.start_tracking()
-    cap = cv2.VideoCapture(0)
+    times = 0
+    flag = False
+    while times < number_of_times:
 
-    sensor_points_x = []
-    sensor_points_y = []
-    sensor_points_z = []
-    time_line = []
-    date_experiment = datetime.datetime.now()
-    z = 0
-    z_vals = []
-    act_vals = []
-    while cap.isOpened():
-        z = z - 2
-        z_vals.append(z)
-        ret, frame = cap.read()
-        cv2.imshow('video', frame)
-        key = cv2.waitKey(1) & 0xFF
+        cap = cv2.VideoCapture(0)
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
-        mc.serial_actuate(0, 0, z, arduino_port_1)
-        act = mc.serial_request(arduino_port_1)
-        for i, t in enumerate(tracking):
-            #print(t[0][3], t[1][3], t[2][3])
-            sensor_points_x.append(t[0][3])
-            sensor_points_y.append(t[1][3])
-            sensor_points_z.append(t[2][3])
+        print(tracking[0][1][3])
+        z_now = mc.serial_request(arduino_port_1)[2] / 800
 
-            time_line.append(datetime.datetime.now())
+        if tracking[0][1][3] > 5.5 and tracking[0][1][3] != np.nan and flag is False:
+            z_now = z_now + 2
+            mc.serial_actuate(0, 0, z_now, arduino_port_1)
+            print('moving forward')
 
-        if sensor_points_z[-1] <= -408 and sensor_points_z[-1] != np.nan:
-            mc.serial_actuate(0, 0, act[2]/800, arduino_port_1)
-            break
+        if tracking[0][1][3] <= 5.5 and tracking[0][1][3] != np.nan:
+            flag = True
+            z_now = mc.serial_request(arduino_port_1)[2] / 800
+            mc.serial_actuate(0, 0, z_now, arduino_port_1)
+            times = times + 1
+            print('WAITING')
+            for j in range(20):
+                print(j)
+                print('t minus:', 20-j)
+                sleep(0.5)
 
-        if key == ord('q'):
-            break
+            sensor_points_x = []
+            sensor_points_y = []
+            sensor_points_z = []
+            time_line = []
+            date_experiment = datetime.datetime.now()
+            z_vals = []
 
-    data_vector = [time_line,
-                   sensor_points_x,
-                   sensor_points_y,
-                   sensor_points_z,
-                   ]
-    dm.save_data_sensors(data_vector, date_experiment, type_trajectory[trajectory])
+            while cap.isOpened():
+                z = mc.serial_request(arduino_port_1)[2] / 800
+                z = z - 2
+                z_vals.append(z)
+                ret, frame = cap.read()
+                cv2.imshow('video', frame)
+                key = cv2.waitKey(1) & 0xFF
+                port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
+                mc.serial_actuate(0, 0, z, arduino_port_1)
+                act = mc.serial_request(arduino_port_1)
+                for i, t in enumerate(tracking):
+                    sensor_points_x.append(t[0][3])
+                    sensor_points_y.append(t[1][3])
+                    sensor_points_z.append(t[2][3])
+
+                    time_line.append(datetime.datetime.now())
+
+                if sensor_points_y[-1] >= 126.5 and sensor_points_z[-1] != np.nan:
+                    z_stop = mc.serial_request(arduino_port_1)[2]/800
+                    mc.serial_actuate(0, 0, z_stop-1, arduino_port_1)
+                    break
+
+                if key == ord('q'):
+                    break
+
+            data_vector = [time_line,
+                           sensor_points_x,
+                           sensor_points_y,
+                           sensor_points_z,
+                           ]
+            dm.save_data_sensors(data_vector, date_experiment, type_trajectory[trajectory])
+            print('test:', times, 'ended')
+            z_stop = mc.serial_request(arduino_port_1)[2] / 800
+            mc.serial_actuate(0, 0, z_stop, arduino_port_1)
+            for j in range(20):
+                print(j)
+                print('t minus:', 20 - j)
+                sleep(0.5)
+                flag = False
+            cap.release()
+            cv2.destroyAllWindows()
+
     TRACKER.stop_tracking()
     TRACKER.close()
-    cap.release()
 
 
 def general_calibration():
@@ -192,7 +227,8 @@ def nasty_test():
     port_arduino = find_arduino.find_arduino()
     print('Arduino detected at:', port_arduino)
     arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
-    current_act_z = 0
+    initial_z = mc.serial_request(arduino_port_1)[2]/800
+    current_act_z = mc.serial_request(arduino_port_1)[2]/800
     old_theta = 0
     old_magnitude = 0
     # directory where the model is located
@@ -246,12 +282,12 @@ def nasty_test():
                 joint_variable_values.append(current_act_joint_variable)
                 # On-line update Jacobian conrtol
 
-                if not (np.isnan(ptx)) and not (np.isnan(pty)):
+                """if not (np.isnan(ptx)) and not (np.isnan(pty)):
                     print('detected')
                     cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
                     h, w, d = np.shape(output_image)
-                    if len(current_act_joint_variable) > 2:
-                        jacobian_matrix = gcf.update_jacobian(jacobian_matrix, current_act_joint_variable[-2:], ptx, pty,
+                    if len(joint_variable_values) > 2 and len(filtered_points_x) > 2:
+                        jacobian_matrix = gcf.update_jacobian(jacobian_matrix, joint_variable_values[-2:], ptx, pty,
                                                               filtered_points_x[-2], filtered_points_y[-2])
 
                     target_vector, theta, magnitude = gcf.update_jacobian_control(jacobian_matrix, ptx, pty, (h, w))
@@ -268,7 +304,7 @@ def nasty_test():
                         actuators_values.append(act)
 
                     elif magnitude == 0:
-                        current_act_z = current_act_z + 1
+                        current_act_z = (mc.serial_request(arduino_port_1)[2]/800) + 2
                         act = mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
                         acumulated_time = acumulated_time + delta_time
                         actuators_values.append(act)
@@ -282,7 +318,7 @@ def nasty_test():
                     thetas.append(np.nan)
                     magnitudes.append(np.nan)
                     print('no target detected, stop')
-                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)"""
 
 
                 # Constant Jacobian control and descreet control just change the control function
@@ -318,7 +354,7 @@ def nasty_test():
                     mc.serial_actuate(0, 0, current_act_z, arduino_port_1)"""
 
                 # Really nasty control
-                """if not (np.isnan(ptx)) and not (np.isnan(pty)):
+                if not (np.isnan(ptx)) and not (np.isnan(pty)):
                     print('detected')
                     cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
                     h, w, d = np.shape(output_image)
@@ -333,7 +369,7 @@ def nasty_test():
                         act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
                     if magnitude == 0:
                         print('actuate(z)')
-                        current_act_z = current_act_z + 2
+                        current_act_z = mc.serial_request(arduino_port_1)[2]/800 + 2
                         act = mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
 
                     actuators_values.append(act)
@@ -345,7 +381,7 @@ def nasty_test():
                     thetas.append(np.nan)
                     magnitudes.append(np.nan)
                     print('no target detected, stop')
-                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)"""
+                    mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
                 #    cv2.imshow('video', frame)
                 cv2.imshow('video', output_image)
                 out.write(output_image)
@@ -353,7 +389,7 @@ def nasty_test():
             #sleep(0.08)
 
         if key == ord('q'):
-            mc.serial_actuate(0, 0, 0, arduino_port_1)
+            mc.serial_actuate(0, 0, initial_z, arduino_port_1)
             break
 
     data_vector = [time_line,
