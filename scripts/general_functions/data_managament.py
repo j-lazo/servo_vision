@@ -6,6 +6,7 @@ import csv
 import os
 import datetime
 
+
 def save_data_sensors(data_vector, date_experiment, type_trajectory):
     results_folder = ''.join([os.getcwd(),
                               '/data/calibration/gt_trajectories/',
@@ -43,12 +44,12 @@ def save_data(data_vector, date_experiment):
     with open(name_test_csv_file, mode='w') as results_file:
 
         results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        results_file_writer.writerow(['vis point x',
-                                     'vis point y',
+        results_file_writer.writerow(['time',
+                                      'vis point x', 'vis point y',
+                                      'filtered x', 'filtered y',
                                      'sensor x',
                                       'sensor y',
                                       'sensor z',
-                                      'time',
                                       'upper q',
                                       'side q',
                                       'stepper',
@@ -58,7 +59,8 @@ def save_data(data_vector, date_experiment):
                                       'magnitude',
                                       'actuate signal 1',
                                       'actuate signal 2',
-                                      'actuate signal 3'])
+                                      'actuate signal 3',
+                                      'Jacobian'])
 
         for i in range(np.shape(data_vector)[1]):
             results_file_writer.writerow([data_vector[0][i],
@@ -67,16 +69,20 @@ def save_data(data_vector, date_experiment):
                                           data_vector[3][i],
                                           data_vector[4][i],
                                           data_vector[5][i],
-                                          data_vector[6][i][0],
-                                          data_vector[6][i][1],
-                                          data_vector[6][i][2],
-                                          data_vector[7][i][0],
-                                          data_vector[7][i][1],
-                                          data_vector[8][i],
-                                          data_vector[9][i],
-                                          data_vector[10][i][0],
-                                          data_vector[10][i][1],
-                                          data_vector[10][i][2]])
+                                          data_vector[6][i],
+                                          data_vector[7][i],
+                                          data_vector[8][i][0],
+                                          data_vector[8][i][1],
+                                          data_vector[8][i][2],
+                                          data_vector[9][i][0],
+                                          data_vector[9][i][1],
+                                          data_vector[10][i],
+                                          data_vector[11][i],
+                                          data_vector[12][i][0],
+                                          data_vector[12][i][1],
+                                          data_vector[12][i][2],
+                                          data_vector[13][i]])
+
 
     print('Saved at:', name_test_csv_file)
 
@@ -85,6 +91,7 @@ def calculate_average_points(list_of_points):
     clean_list = [point for point in list_of_points if point != np.nan]
     average_point = np.mean(clean_list)
     return average_point
+
 
 def load_data(path, image_modality):
     """
