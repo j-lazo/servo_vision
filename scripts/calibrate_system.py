@@ -280,6 +280,7 @@ def nasty_test():
                 # if a point is detected
                 current_act_joint_variable = mc.serial_request(arduino_port_1)
                 joint_variable_values.append(current_act_joint_variable)
+                jacobian_matrices.append(jacobian_matrix)
                 # On-line update Jacobian conrtol
 
                 """if not (np.isnan(ptx)) and not (np.isnan(pty)):
@@ -298,7 +299,7 @@ def nasty_test():
                     magnitudes.append(magnitude)
 
                     delta_time = (datetime.datetime.now()-init_time_epoch)
-                    if acumulated_time > datetime.timedelta(seconds=0.1) and magnitude > 0:
+                    if acumulated_time > datetime.timedeltbbbba(seconds=0.1) and magnitude > 0:
                         act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
                         acumulated_time = datetime.timedelta(seconds=0)
                         actuators_values.append(act)
@@ -389,7 +390,8 @@ def nasty_test():
             #sleep(0.08)
 
         if key == ord('q'):
-            mc.serial_actuate(0, 0, initial_z, arduino_port_1)
+            stop_z = mc.serial_request(arduino_port_1)[2]/800
+            mc.serial_actuate(0, 0, 0, arduino_port_1)
             break
 
     data_vector = [time_line,
@@ -406,6 +408,9 @@ def nasty_test():
                    magnitudes,
                    actuators_values,
                    jacobian_matrices]
+
+    mc.serial_actuate(0, 0, initial_z, arduino_port_1)
+
     dm.save_data(data_vector, date_experiment)
     TRACKER.stop_tracking()
     TRACKER.close()
@@ -420,16 +425,26 @@ def manual_control():
     print('Arduino detected at:', port_arduino)
     arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
     z = 0
+    defined_speed = 5
+    max_speed = 35
+    mins_speed = 1
+    prev_key = 0
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         ret, frame = cap.read()
-        defined_speed = 5
         if ret is True:
             h, w, d = np.shape(frame)
             cv2.line(frame, (int(w/2), 0), (int(w/2), h), (0, 255, 255), 3)
             cv2.line(frame, (0, int(h/2)), (w, int(h/2)), (0, 255, 255), 3)
             cv2.circle(frame, (int(w/2), int(h/2)), 90, (0, 0, 255), 3)
             cv2.imshow('video', frame)
+            if key == 43 and defined_speed <= max_speed:
+                defined_speed = defined_speed + 1
+                print('speed', defined_speed)
+                key = prev_key
+            if key == 45 and defined_speed >= mins_speed:
+                defined_speed = defined_speed - 1
+                print('speed', defined_speed)
             if key == 83:
                 print('right')
                 mc.serial_actuate(-defined_speed, 0, z, arduino_port_1)
@@ -459,6 +474,7 @@ def manual_control():
             #else:
                 #mc.serial_actuate(0, 0, z, arduino_port_1)
 
+        prev_key = key
         sleep(0.08)
 
         if key == ord('q'):
