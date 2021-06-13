@@ -35,7 +35,9 @@ def build_ground_truth_paths(directory_files, plot=True):
 
     vertical_right_x = [line_x[-1], line_x[-1]]
     vertical_right_y = [down_lim_1[0], upper_lim_1[0]]
-
+    paint_area = (list(zip(line_x, upper_lim_1)))
+    paint_area = paint_area + (list(zip(line_x, down_lim_1)))
+    print(paint_area)
     if plot is True:
         plt.figure()
         for j in range(len(list_all_z)):
@@ -43,8 +45,11 @@ def build_ground_truth_paths(directory_files, plot=True):
             plt.plot(line_x, line_y, 'r--')
             plt.plot(line_x, down_lim_1, color='darkorange')
             plt.plot(line_x, upper_lim_1, color='darkorange')
+            plt.plot(line_x, upper_lim_2, color='darkorange')
+            plt.plot(line_x, down_lim_2, color='darkorange')
             plt.plot(vertical_left_x, vertical_left_y, '--')
             plt.plot(vertical_right_x, vertical_right_y, '--')
+            plt.fill([(60, -160), (120, -130), (80, -150), (80, -140)])
             plt.ylim([min_y-30, max_y+30])
         """fig1, axs1 = plt.subplots(len(list_files), 1, figsize=(17, 8))
         for j, model in enumerate(list_files):
