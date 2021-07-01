@@ -21,7 +21,7 @@ import time
 from general_functions import data_managament as dm
 
 
-def get_ground_truth_path(trajectory=3, number_of_times=10):
+def get_ground_truth_path(trajectory=0, number_of_times=2):
     type_trajectory = ['straight_line', 'right_curve', 'left_curve', 'right_s', 'left_s']
     SETTINGS = {
         "tracker type": "aurora",
@@ -44,12 +44,12 @@ def get_ground_truth_path(trajectory=3, number_of_times=10):
         print(tracking[0][1][3])
         z_now = mc.serial_request(arduino_port_1)[2] / 800
 
-        if tracking[0][1][3] > 5.5 and tracking[0][1][3] != np.nan and flag is False:
+        if tracking[0][1][3] > 0 and tracking[0][1][3] != np.nan and flag is False:
             z_now = z_now + 2
             mc.serial_actuate(0, 0, z_now, arduino_port_1)
             print('moving forward')
 
-        if tracking[0][1][3] <= 5.5 and tracking[0][1][3] != np.nan:
+        if tracking[0][1][3] <= 0 and tracking[0][1][3] != np.nan:
             flag = True
             z_now = mc.serial_request(arduino_port_1)[2] / 800
             mc.serial_actuate(0, 0, z_now, arduino_port_1)
@@ -58,11 +58,20 @@ def get_ground_truth_path(trajectory=3, number_of_times=10):
             for j in range(20):
                 print(j)
                 print('t minus:', 20-j)
-                sleep(0.5)
+                sleep(0.1)
 
-            sensor_points_x = []
-            sensor_points_y = []
-            sensor_points_z = []
+            sensor_1_points_x = []
+            sensor_1_points_y = []
+            sensor_1_points_z = []
+            sensor_2_points_x = []
+            sensor_2_points_y = []
+            sensor_2_points_z = []
+            sensor_3_points_x = []
+            sensor_3_points_y = []
+            sensor_3_points_z = []
+            sensor_4_points_x = []
+            sensor_4_points_y = []
+            sensor_4_points_z = []
             time_line = []
             date_experiment = datetime.datetime.now()
             z_vals = []
@@ -77,14 +86,25 @@ def get_ground_truth_path(trajectory=3, number_of_times=10):
                 port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
                 mc.serial_actuate(0, 0, z, arduino_port_1)
                 act = mc.serial_request(arduino_port_1)
-                for i, t in enumerate(tracking):
-                    sensor_points_x.append(t[0][3])
-                    sensor_points_y.append(t[1][3])
-                    sensor_points_z.append(t[2][3])
+                sensor_1_points_x.append(tracking[0][0][3])
+                sensor_1_points_y.append(tracking[0][1][3])
+                sensor_1_points_z.append(tracking[0][2][3])
 
-                    time_line.append(datetime.datetime.now())
+                sensor_2_points_x.append(tracking[1][0][3])
+                sensor_2_points_y.append(tracking[1][1][3])
+                sensor_2_points_z.append(tracking[1][2][3])
 
-                if sensor_points_y[-1] >= 126.5 and sensor_points_z[-1] != np.nan:
+                sensor_3_points_x.append(tracking[2][0][3])
+                sensor_3_points_y.append(tracking[2][1][3])
+                sensor_3_points_z.append(tracking[2][2][3])
+
+                sensor_4_points_x.append(tracking[3][0][3])
+                sensor_4_points_y.append(tracking[3][1][3])
+                sensor_4_points_z.append(tracking[3][2][3])
+
+                time_line.append(datetime.datetime.now())
+
+                if sensor_1_points_y[-1] >= 120 and sensor_1_points_z[-1] != np.nan:
                     z_stop = mc.serial_request(arduino_port_1)[2]/800
                     mc.serial_actuate(0, 0, z_stop-1, arduino_port_1)
                     break
@@ -93,9 +113,18 @@ def get_ground_truth_path(trajectory=3, number_of_times=10):
                     break
 
             data_vector = [time_line,
-                           sensor_points_x,
-                           sensor_points_y,
-                           sensor_points_z,
+                           sensor_1_points_x,
+                           sensor_1_points_y,
+                           sensor_1_points_z,
+                           sensor_2_points_x,
+                           sensor_2_points_y,
+                           sensor_2_points_z,
+                           sensor_3_points_x,
+                           sensor_3_points_y,
+                           sensor_3_points_z,
+                           sensor_4_points_x,
+                           sensor_4_points_y,
+                           sensor_4_points_z
                            ]
             dm.save_data_sensors(data_vector, date_experiment, type_trajectory[trajectory])
             print('test:', times, 'ended')
@@ -104,7 +133,7 @@ def get_ground_truth_path(trajectory=3, number_of_times=10):
             for j in range(20):
                 print(j)
                 print('t minus:', 20 - j)
-                sleep(0.5)
+                sleep(0.1)
                 flag = False
             cap.release()
             cv2.destroyAllWindows()
@@ -333,7 +362,7 @@ def nasty_test():
                     magnitudes.append(magnitude)
 
                     delta_time = (datetime.datetime.now()-init_time_epoch)
-                    if acumulated_time > datetime.timedelta(seconds=0.1) and magnitude > 0:
+                        if acumulated_time > datetime.timedelta(seconds=0.1) and magnitude > 0:
                         act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
                         acumulated_time = datetime.timedelta(seconds=0)
                         actuators_values.append(act)
