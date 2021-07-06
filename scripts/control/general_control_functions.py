@@ -248,19 +248,28 @@ def mapping_direction(transformed_x, transformed_y):
 def mapping_distance(target_distance):
     # nasty
     if target_distance > 200:
+        magnitude = 25
+    elif 200 > target_distance > 100:
+        magnitude = 15
+    elif 100 > target_distance > 30:
+        magnitude = 5
+    else:
+        magnitude = 0
+    """# nasty discreete
+    if target_distance > 200:
         magnitude = 30
     elif 200 > target_distance > 100:
         magnitude = 10
     elif 100 > target_distance > 30:
         magnitude = 5
     else:
-        magnitude = 0
+        magnitude = 0"""
 
     # descrete
-    """if target_distance > 80:
-        magnitude = 2
-    elif 80 >= target_distance > 22:
-        magnitude = 3.5
+    """if target_distance > 150:
+        magnitude = 5
+    elif 150 >= target_distance > 22:
+        magnitude = 6
     else:
         magnitude = 0"""
 
