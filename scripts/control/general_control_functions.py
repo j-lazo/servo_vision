@@ -132,6 +132,22 @@ def discrete_jacobian_control(target_x, target_y, img_shape, absolute_delta=30, 
     return target_vector, theta, magnitude  # Here we return a list
 
 
+def potential_field(target_x, target_y, img_shape, delta_border=50):
+    external_force = 1
+    distance = np.sqrt(1.0*(target_x-img_shape[0])**2, 1.0*(target_y-img_shape[1])**2)
+    theta = np.tan()
+    k = 0.5
+    if distance > delta_border:
+        #2DO
+        # calculate the maximum an minimums according to the size of the images and the deltas
+        # then adjust k according to this
+        external_force = k * (distance)**2
+    else:
+        external_force = k * (distance)
+    return external_force
+
+
+
 def update_jacobian_control(jacobian_mat, target_x, target_y, img_shape, absolute_delta=30, p_gain=1.0):
     if 0 < target_x < img_shape[0] and 0 < target_y < img_shape[1]:
         transformed_x = -(target_x - img_shape[0] / 2)
