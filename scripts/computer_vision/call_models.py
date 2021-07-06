@@ -43,13 +43,13 @@ def detect_lumen(model, innput_frame, output_size=(300, 300)):
     # calculate the center points of the lumen according to the detected mask
     point_x, point_y = cvf.detect_dark_region(mask, output_imgage)
 
-    if not(np.isnan(point_x)):
-        cv2.circle(output_imgage, (int(point_x), int(point_y)), 45, (0, 0, 255), 2)
-    if not(np.isnan(point_y)):
-        cv2.circle(output_imgage, (int(point_x), int(point_y)), 25, (0, 0, 255), 2)
-        cv2.line(output_imgage, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
+    #if not(np.isnan(point_x)):
+    #    cv2.circle(output_imgage, (int(point_x), int(point_y)), 45, (0, 0, 255), 2)
+    #if not(np.isnan(point_y)):
+    #    cv2.circle(output_imgage, (int(point_x), int(point_y)), 25, (0, 0, 255), 2)
+    #    cv2.line(output_imgage, (int(point_x), int(point_y)), (int(w / 2), int(h / 2)), (255, 0, 0), 4)
     # center of the image
-    cv2.rectangle(output_imgage, (int(w / 2) - 3, int(h / 2) - 3), (int(w / 2) + 3, int(h / 2) + 3),  (0, 255, 255), -1)
+    #cv2.rectangle(output_imgage, (int(w / 2) - 3, int(h / 2) - 3), (int(w / 2) + 3, int(h / 2) + 3),  (0, 255, 255), -1)
 
     return output_imgage, point_x, point_y
 
