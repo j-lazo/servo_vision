@@ -20,15 +20,34 @@ def save_data_sensors(data_vector, date_experiment, type_trajectory):
 
         results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         results_file_writer.writerow(['time',
-                                      'sensor x',
-                                      'sensor y',
-                                      'sensor z'])
+                                      'sensor 1 x',
+                                      'sensor 1 y',
+                                      'sensor 1 z',
+                                      'sensor 2 x',
+                                      'sensor 2 y',
+                                      'sensor 2 z',
+                                      'sensor 3 x',
+                                      'sensor 3 y',
+                                      'sensor 3 z',
+                                      'sensor 4 x',
+                                      'sensor 4 y',
+                                      'sensor 4 z'
+                                      ])
 
         for i in range(np.shape(data_vector)[1]):
             results_file_writer.writerow([data_vector[0][i],
                                           data_vector[1][i],
                                           data_vector[2][i],
-                                          data_vector[3][i]])
+                                          data_vector[3][i],
+                                          data_vector[4][i],
+                                          data_vector[5][i],
+                                          data_vector[6][i],
+                                          data_vector[7][i],
+                                          data_vector[8][i],
+                                          data_vector[9][i],
+                                          data_vector[10][i],
+                                          data_vector[11][i],
+                                          data_vector[12][i]])
 
 
     print('Saved at:', name_test_csv_file)
@@ -47,9 +66,9 @@ def save_data(data_vector, date_experiment):
         results_file_writer.writerow(['time',
                                       'vis point x', 'vis point y',
                                       'filtered x', 'filtered y',
-                                     'sensor x',
-                                      'sensor y',
-                                      'sensor z',
+                                      'sensor 1 x', 'sensor 1 y', 'sensor 1 z',
+                                      'sensor 2 x', 'sensor 2 y', 'sensor 2 z',
+                                      'sensor 3 x', 'sensor 3 y', 'sensor 3 z',
                                       'upper q',
                                       'side q',
                                       'stepper',
@@ -63,6 +82,7 @@ def save_data(data_vector, date_experiment):
                                       'Jacobian'])
 
         for i in range(np.shape(data_vector)[1]):
+
             results_file_writer.writerow([data_vector[0][i],
                                           data_vector[1][i],
                                           data_vector[2][i],
@@ -71,17 +91,22 @@ def save_data(data_vector, date_experiment):
                                           data_vector[5][i],
                                           data_vector[6][i],
                                           data_vector[7][i],
-                                          data_vector[8][i][0],
-                                          data_vector[8][i][1],
-                                          data_vector[8][i][2],
-                                          data_vector[9][i][0],
-                                          data_vector[9][i][1],
+                                          data_vector[8][i],
+                                          data_vector[9][i],
                                           data_vector[10][i],
                                           data_vector[11][i],
-                                          data_vector[12][i][0],
-                                          data_vector[12][i][1],
-                                          data_vector[12][i][2],
-                                          data_vector[13][i]])
+                                          data_vector[12][i],
+                                          data_vector[13][i][0],
+                                          data_vector[13][i][1],
+                                          data_vector[13][i][2],
+                                          data_vector[14][i][0],
+                                          data_vector[14][i][1],
+                                          data_vector[15][i],
+                                          data_vector[16][i],
+                                          data_vector[17][i][0],
+                                          data_vector[17][i][1],
+                                          data_vector[17][i][2],
+                                          data_vector[18][i]])
 
 
     print('Saved at:', name_test_csv_file)
@@ -89,7 +114,7 @@ def save_data(data_vector, date_experiment):
 
 def calculate_average_points(list_of_points):
     clean_list = [point for point in list_of_points if point != np.nan]
-    average_point = np.mean(clean_list)
+    average_point = np.median(clean_list)
     return average_point
 
 
