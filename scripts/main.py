@@ -20,7 +20,8 @@ import datetime
 import time
 from general_functions import data_managament as dm
 
-def main():
+
+def main(control='potential'):
     SETTINGS = {
         "tracker type": "aurora",
         "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
@@ -75,7 +76,7 @@ def main():
     frame_rate = 60
     acumulated_time = datetime.timedelta(seconds=0)
     delta_time = datetime.timedelta(seconds=0)
-    jacobian_matrix = [[0.33, -0.26], [0.037, 0.81]]
+    jacobian_matrix = [[0.83, -0.02], [0.038, 1.01]]
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         prev = 0
@@ -104,7 +105,6 @@ def main():
             sensor_3_points_y.append(tracking[2][1][3])
             sensor_3_points_z.append(tracking[2][2][3])
 
-
             ptx = dm.calculate_average_points(center_points_x[-7:])
             pty = dm.calculate_average_points(center_points_y[-7:])
             filtered_points_x.append(ptx)
@@ -116,15 +116,20 @@ def main():
 
             if not (np.isnan(ptx)) and not (np.isnan(pty)):
                 print('detected')
-                cv2.circle(output_image, (int(point_x), int(point_y)), 10, (0, 0, 255), -1)
                 h, w, d = np.shape(output_image)
+                output_image = cvf.paint_image(output_image, ptx, pty, radius_center_point=10,
+                                               radius_delta_1=25, radius_delta_2=45)
+                # center of the image
+                cv2.rectangle(output_image, (int(h / 2) - 3, int(w / 2) - 3), (int(h / 2) + 3, int(w / 2) + 3),
+                              (0, 255, 255), -1)
                 target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
+                #target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
                 target_vectors.append(target_vector)
                 thetas.append(theta)
                 magnitudes.append(magnitude)
 
                 delta_time = (datetime.datetime.now()-init_time_epoch)
-                if acumulated_time > datetime.timedelta(seconds=0.1):
+                if acumulated_time > datetime.timedelta(seconds=0.3):
                     print(acumulated_time)
                     acumulated_time = datetime.timedelta(seconds=0)
                     if magnitude > 0:
@@ -179,8 +184,6 @@ def main():
                    actuators_values,
                    jacobian_matrices]
 
-    for vector in data_vector:
-        print(np.shape(vector))
 
     mc.serial_actuate(0, 0, initial_z, arduino_port_1)
 
@@ -192,4 +195,4 @@ def main():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    main()
+    main(control='descrete_jacobian')
