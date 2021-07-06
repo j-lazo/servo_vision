@@ -120,7 +120,7 @@ def discrete_jacobian_control(target_x, target_y, img_shape, absolute_delta=30, 
     else:
         print("target out of boundary")
         return [0.0, 0.0], 0.0, 0.0
-    inv_jacobian = [[0.81, 0.26], [-0.037, 0.33]]
+    inv_jacobian = [[1.01, 0.02], [-0.038, 0.83]]/0.84
     target_vector = [0, 0]
     magnitude = mapping_distance(target_distance)
     p_gain = magnitude / 30.0
