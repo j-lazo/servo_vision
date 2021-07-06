@@ -26,7 +26,7 @@ def plot_data_equivalence(directory_data):
     sensors_x = []
     sensors_y = []
     pattern_size = (7, 5)
-    for i, image_name in enumerate(list_imgs[1:9]):
+    for i, image_name in enumerate(list_imgs[:8]):
         print(i, image_name, 'q1')
         image = cv2.imread(dir_imgs + image_name)
         matrix = read_matrix_file(dir_sensor_data + list_sensor_data[i])
@@ -49,12 +49,12 @@ def plot_data_equivalence(directory_data):
         points_x1.append(point_x[7])
         joints_y1.append(int(joints[1]))
 
-    starting_point = 10
+    starting_point = 9
     for i, image_name in enumerate(list_imgs[starting_point:]):
         print(i, image_name, 'q2')
         image = cv2.imread(dir_imgs + image_name)
-        matrix = read_matrix_file(dir_sensor_data + list_sensor_data[i+starting_point-1])
-        joints = read_vector_file(dir_joints_data + list_joints_position[i+starting_point-1])
+        matrix = read_matrix_file(dir_sensor_data + list_sensor_data[i+starting_point])
+        joints = read_vector_file(dir_joints_data + list_joints_position[i+starting_point])
         print(joints)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         f, corners = gf.find_corners(gray, pattern_size)
