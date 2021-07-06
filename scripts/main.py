@@ -21,7 +21,7 @@ import time
 from general_functions import data_managament as dm
 
 
-def main(control='potential'):
+def main(control_strategy='naive'):
     SETTINGS = {
         "tracker type": "aurora",
         "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
@@ -33,11 +33,11 @@ def main(control='potential'):
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     date_experiment = datetime.datetime.now()
 
-    results_folder = ''.join([os.getcwd(), '/results/experiment_', date_experiment.strftime("%d_%m_%Y_%H_%M"), '/'])
+    results_folder = ''.join([os.getcwd(), '/results/experiment_', control_strategy, '_', date_experiment.strftime("%d_%m_%Y_%H_%M"), '/'])
     if not os.path.isdir(results_folder):
         os.mkdir(results_folder)
 
-    name_video = results_folder + 'experiment_lumen_output_video' + date_experiment.strftime("%d_%m_%Y_%H_%M")
+    name_video = results_folder + 'experiment_lumen_output_video' + control_strategy + '_' + date_experiment.strftime("%d_%m_%Y_%H_%M")
     out = cv2.VideoWriter(name_video + '_.avi', fourcc, 20.0, (300, 300))
     cap = cv2.VideoCapture(0)
     port_arduino = find_arduino.find_arduino()
@@ -48,11 +48,11 @@ def main(control='potential'):
     old_theta = 0
     old_magnitude = 0
     # directory where the model is located
-    project_folder = '/home/nearlab/Jorge/current_work/lumen_segmentation/data/' \
-                     'phantom_lumen/results/ResUnet/'
-    folder_name = 'ResUnet_lr_0.0001_bs_16_rgb_19_05_2021_17_07'
+    project_folder = os.getcwd() + '/scripts/computer_vision/models/weights/'
+    folder_model = 'Transpose_ResUnet_lr_0.001_bs_16_rgb_27_05_2021_13_03'
     # load the model and get input size of the model
-    model, input_size = cm.load_model(project_folder, folder_name)
+    model, input_size = cm.load_model(project_folder, folder_model)
+    print('input size', input_size)
     center_points_x = []
     center_points_y = []
     sensor_1_points_x = []
@@ -73,23 +73,23 @@ def main(control='potential'):
     filtered_points_x = []
     filtered_points_y = []
     jacobian_matrices = []
-    frame_rate = 60
     acumulated_time = datetime.timedelta(seconds=0)
     delta_time = datetime.timedelta(seconds=0)
     jacobian_matrix = [[0.83, -0.02], [0.038, 1.01]]
+    counter = 0
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         prev = 0
         init_time_epoch = datetime.datetime.now()
         acumulated_time = acumulated_time + delta_time
         ret, frame = cap.read()
+        counter += 1
         time_elapsed = time.time() - prev
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
-        if ret is True:
+
+        if ret is True and counter > 10:
             time_line.append(datetime.datetime.now())
-            #if time_elapsed > 1. / frame_rate:
             output_image, point_x, point_y = cm.detect_lumen(model, frame)
-            #output_image, point_x, point_y = cvf.detect_corners_chessboard(frame)
             center_points_x.append(point_x)
             center_points_y.append(point_y)
 
@@ -122,8 +122,13 @@ def main(control='potential'):
                 # center of the image
                 cv2.rectangle(output_image, (int(h / 2) - 3, int(w / 2) - 3), (int(h / 2) + 3, int(w / 2) + 3),
                               (0, 255, 255), -1)
-                target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
-                #target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
+                if control_strategy == 'discrete_jacobian':
+                    target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
+                elif control_strategy == 'potential_field':
+                    target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
+                else:
+                    target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
+
                 target_vectors.append(target_vector)
                 thetas.append(theta)
                 magnitudes.append(magnitude)
@@ -146,7 +151,6 @@ def main(control='potential'):
                 else:
                     actuators_values.append([np.nan, np.nan, np.nan])
 
-
             else:
                 actuators_values.append([np.nan, np.nan, np.nan])
                 target_vectors.append([np.nan, np.nan])
@@ -157,8 +161,6 @@ def main(control='potential'):
             #    cv2.imshow('video', frame)
             cv2.imshow('video', output_image)
             out.write(output_image)
-
-
 
         if key == ord('q'):
             stop_z = mc.serial_request(arduino_port_1)[2]/800
@@ -177,6 +179,7 @@ def main(control='potential'):
                    sensor_2_points_z,
                    sensor_3_points_x,
                    sensor_3_points_y,
+                   sensor_3_points_z,
                    joint_variable_values,
                    target_vectors,
                    thetas,
@@ -184,15 +187,15 @@ def main(control='potential'):
                    actuators_values,
                    jacobian_matrices]
 
-
     mc.serial_actuate(0, 0, initial_z, arduino_port_1)
 
-    dm.save_data(data_vector, date_experiment)
+    dm.save_data(data_vector, results_folder, date_experiment)
     TRACKER.stop_tracking()
     TRACKER.close()
     out.release()
     cap.release()
     cv2.destroyAllWindows()
 
+
 if __name__ == "__main__":
-    main(control='descrete_jacobian')
+    main(control_strategy='discrete_jacobian')
