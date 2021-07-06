@@ -7,6 +7,16 @@ from numpy import dot, eye
 import os
 
 
+def paint_image(painted_image, center_point_x, center_point_y,
+                radius_center_point=10, radius_delta_1=25, radius_delta_2=45):
+    h, w, d = np.shape(painted_image)
+    cv2.circle(painted_image, (int(center_point_x), int(center_point_y)), radius_center_point, (0, 0, 255), -1)
+    cv2.circle(painted_image, (int(center_point_x), int(center_point_y)), radius_delta_1, (0, 0, 255), 2)
+    cv2.circle(painted_image, (int(center_point_x), int(center_point_y)), radius_delta_2, (0, 0, 255), 2)
+    cv2.line(painted_image, (int(center_point_x), int(center_point_y)), (int(h / 2), int(w / 2)), (255, 0, 0), 4)
+
+    return painted_image
+
 def calculate_middle_point_chessboard(corners):
 
     """
