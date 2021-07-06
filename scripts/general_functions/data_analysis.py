@@ -401,9 +401,154 @@ def analyze_results(directory_files, plot=True):
                 #axs1[i, j].set_xticks([])"""
 
 
+def calculate_centroid_triangle(edge_1_y, edge_1_z, edge_1_x,
+                                edge_2_y, edge_2_x,
+                                edge_3_y, edge_3_x):
+    ox = []
+    oy = []
+    oz = edge_1_z[:133]
+    for j, point in enumerate(oz):
+        oy.append((edge_1_y[j] + edge_2_y[j] + edge_3_y[j])/3)
+        ox.append((edge_1_x[j] + edge_2_x[j] + edge_3_x[j])/3)
+
+    return ox, oy, oz
+
+
+def calculate_average(list_points):
+    data = np.array(list_points)
+    return np.average(data, axis=0)
+
+
+def plot_3D_data(directory_results):
+
+    list_files = os.listdir(directory_results)
+    list_files = sorted([file for file in list_files if file.endswith('.csv')])
+    sensor_1_x = []
+    sensor_1_y = []
+    sensor_1_z = []
+
+    sensor_2_x = []
+    sensor_2_y = []
+    sensor_2_z = []
+
+    sensor_3_x = []
+    sensor_3_y = []
+    sensor_3_z = []
+
+    sensor_4_x = []
+    sensor_4_y = []
+    sensor_4_z = []
+    
+    for file in list_files:
+        data = pd.read_csv(directory_results + file, skipinitialspace=True)
+        sensor_1_x.append(data['sensor 1 x'].tolist())
+        sensor_1_y.append(data['sensor 1 y'].tolist())
+        sensor_1_z.append(data['sensor 1 z'].tolist())
+
+        sensor_2_x.append(data['sensor 2 x'].tolist())
+        sensor_2_y.append(data['sensor 2 y'].tolist())
+        sensor_2_z.append(data['sensor 2 z'].tolist())
+
+        sensor_3_x.append(data['sensor 3 x'].tolist())
+        sensor_3_y.append(data['sensor 3 y'].tolist())
+        sensor_3_z.append(data['sensor 3 z'].tolist())
+
+        sensor_4_x.append(data['sensor 4 x'].tolist())
+        sensor_4_y.append(data['sensor 4 y'].tolist())
+        sensor_4_z.append(data['sensor 4 z'].tolist())
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+
+    all_vals_x = []
+    all_vals_y = []
+
+    x_mins = []
+    x_maxs = []
+    y_mins = []
+    y_maxs = []
+    z_mins = []
+    z_maxs = []
+
+    for j in range(len(sensor_1_x)):
+        ox, oy, oz = calculate_centroid_triangle(sensor_1_x[j], sensor_1_y[j], sensor_1_z[j],
+                                             sensor_2_x[j], sensor_2_z[j],
+                                             sensor_4_x[j], sensor_4_z[j])
+
+        z_maxs.append(np.amin(sensor_4_z[j]))
+        z_mins.append(np.amax(sensor_2_z[j]))
+
+        x_maxs.append(np.amin(sensor_4_z[j]))
+        x_mins.append(np.amax(sensor_2_z[j]))
+
+        y_maxs.append(np.amin(sensor_4_y[j]))
+        y_mins.append(np.amax(sensor_4_y[j]))
+
+        ax.plot(sensor_1_x[j], sensor_1_y[j], sensor_1_z[j]) #label='sensor 1 trajectory ' + str(j))
+        ax.plot(sensor_2_x[j], sensor_2_y[j], sensor_2_z[j]) #label='sensor 2 trajectory ' + str(j))
+        ax.plot(sensor_3_x[j], sensor_3_y[j], sensor_3_z[j]) #label='sensor 3 trajectory ' + str(j))
+        ax.plot(sensor_4_x[j], sensor_4_y[j], sensor_4_z[j]) #label='sensor 4 trajectory ' + str(j))
+
+        all_vals_x.append(ox)
+        all_vals_y.append(oy)
+        ax.plot(oy, oz, ox, '-o', label='center point' + str(j))
+
+    pooling = 5
+    inner_radius = 8
+    x_min = np.amin(x_mins)
+    x_max = np.amax(x_maxs)
+    y_min = np.amin(y_mins)
+    y_max = np.amax(y_maxs)
+    z_min = np.amin(z_mins)
+    z_max = np.amax(z_maxs)
+
+    x_cilinder = np.linspace(31, 47, 500)
+    z = np.linspace(y_min - 7, y_max + 7, 500)
+    Xc, Zc = np.meshgrid(x_cilinder, z)
+    Yc1 = np.sqrt(inner_radius ** 2 - (39 - Xc) ** 2) - 180
+    Yc2 = -np.sqrt(inner_radius ** 2 - (39 - Xc) ** 2) - 180
+
+    # Draw parameters
+    rstride = 10
+    cstride = 20
+    # plot the cylinders
+    ax.plot_wireframe(Xc, Zc, Yc1, alpha=0.2, rstride=rstride, cstride=cstride, color='orange')
+    ax.plot_wireframe(Xc, Zc, Yc2, alpha=0.2, rstride=rstride, cstride=cstride, color='orange')
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+    ax.legend()
+    #ax.set_xlim(55, 95)
+
+    plt.figure()
+
+    for j in range(len(all_vals_x)):
+        plt.subplot(211)
+        plt.plot(oz, all_vals_x[j], label='center point' + str(j))
+        #plt.plot(sensor_3_y[j], sensor_3_z[j], 's')
+        plt.subplot(212)
+        plt.plot(oz, all_vals_y[j], label='center point' + str(j))
+        #plt.plot(sensor_3_y[j], sensor_3_x[j], 's')
+
+
+    average_x = calculate_average(all_vals_x)
+    average_y = calculate_average(all_vals_y)
+    plt.subplot(211)
+    plt.plot(oz, average_x, '--', label='average')
+    plt.subplot(212)
+    plt.plot(oz, average_y, '--', label='average')
+    plt.xlabel('y (mm)')
+
+    plt.legend(loc='best')
+
+    plt.show()
+
+
+
 if __name__ == '__main__':
-    directory_2 = os.getcwd() + '/results/n_control/left_curve/'
+    directory_2 = os.getcwd() + '/results/n_control/straight_line/'
     #analyze_results(directory)
-    directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/left_curve/'
-    compare_gt_and_results(directory_1, directory_2)
+    directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
+    plot_3D_data(directory_1)
     plt.show()
