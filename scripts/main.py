@@ -21,7 +21,7 @@ import time
 from general_functions import data_managament as dm
 
 
-def main(control_strategy='naive'):
+def run_experiment(control_strategy='naive'):
     SETTINGS = {
         "tracker type": "aurora",
         "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
@@ -198,4 +198,15 @@ def main(control_strategy='naive'):
 
 
 if __name__ == "__main__":
-    main(control_strategy='discrete_jacobian')
+
+    parser = argparse.ArgumentParser('Run Experiments')
+
+    parser.add_argument('--control_strategy', required=True,
+                        help='contro strategy: discrete_jacobian, naive')
+    parser.add_argument('--neural_network_dir', required=False,
+                        metavar="str", default=os.getcwd(),
+                        help='Directory where the tensorflow model to make predictions of images is saved')
+
+    args = parser.parse_args()
+
+    run_experiment(control_strategy=args.control_strategy)
