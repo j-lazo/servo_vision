@@ -11,9 +11,11 @@ def test(tracker):
     """
 
     port_handles, timestamps, framenumbers, tracking, quality = tracker.get_frame()
-    print('x:', tracking[0][0][3],
-          'y:', tracking[0][1][3],
-          'z:', tracking[0][2][3])
+    for t, sensor in enumerate(tracking):
+        print('sensor', t)
+        print('x:', tracking[t][0][3],
+              'y:', tracking[t][1][3],
+              'z:', tracking[t][2][3])
 
 
 def main():
