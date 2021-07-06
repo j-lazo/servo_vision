@@ -96,17 +96,18 @@ def save_data(data_vector, date_experiment):
                                           data_vector[10][i],
                                           data_vector[11][i],
                                           data_vector[12][i],
-                                          data_vector[13][i][0],
-                                          data_vector[13][i][1],
-                                          data_vector[13][i][2],
+                                          data_vector[13][i],
                                           data_vector[14][i][0],
                                           data_vector[14][i][1],
-                                          data_vector[15][i],
+                                          data_vector[14][i][2],
+                                          data_vector[15][i][0],
+                                          data_vector[15][i][1],
                                           data_vector[16][i],
-                                          data_vector[17][i][0],
-                                          data_vector[17][i][1],
-                                          data_vector[17][i][2],
-                                          data_vector[18][i]])
+                                          data_vector[17][i],
+                                          data_vector[18][i][0],
+                                          data_vector[18][i][1],
+                                          data_vector[18][i][2],
+                                          data_vector[19][i]])
 
 
     print('Saved at:', name_test_csv_file)
