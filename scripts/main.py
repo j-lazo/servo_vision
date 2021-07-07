@@ -21,7 +21,7 @@ import time
 from general_functions import data_managament as dm
 
 
-def run_experiment(control_strategy='naive'):
+def run_experiment(control_strategy):
     SETTINGS = {
         "tracker type": "aurora",
         "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
@@ -80,14 +80,13 @@ def run_experiment(control_strategy='naive'):
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         prev = 0
-        init_time_epoch = datetime.datetime.now()
-        acumulated_time = acumulated_time + delta_time
         ret, frame = cap.read()
         counter += 1
         time_elapsed = time.time() - prev
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
 
         if ret is True and counter > 10:
+            init_time_epoch = datetime.datetime.now()
             time_line.append(datetime.datetime.now())
             output_image, point_x, point_y = cm.detect_lumen(model, frame)
             center_points_x.append(point_x)
@@ -105,14 +104,15 @@ def run_experiment(control_strategy='naive'):
             sensor_3_points_y.append(tracking[2][1][3])
             sensor_3_points_z.append(tracking[2][2][3])
 
-            ptx = dm.calculate_average_points(center_points_x[-7:])
-            pty = dm.calculate_average_points(center_points_y[-7:])
+            ptx = dm.calculate_average_points(center_points_x[-4:])
+            pty = dm.calculate_average_points(center_points_y[-4:])
             filtered_points_x.append(ptx)
             filtered_points_y.append(pty)
             # if a point is detected
             current_act_joint_variable = mc.serial_request(arduino_port_1)
             joint_variable_values.append(current_act_joint_variable)
             jacobian_matrices.append(jacobian_matrix)
+            acumulated_time = acumulated_time + delta_time
 
             if not (np.isnan(ptx)) and not (np.isnan(pty)):
                 print('detected')
@@ -124,35 +124,39 @@ def run_experiment(control_strategy='naive'):
                               (0, 255, 255), -1)
 
                 delta_time = (datetime.datetime.now()-init_time_epoch)
-                if acumulated_time > datetime.timedelta(seconds=0.3):
-                    print(acumulated_time)
-                    print(acumulated_time.total_seconds())
-                    print(type(acumulated_time.total_seconds()))
-                    acumulated_time = datetime.timedelta(seconds=0)
-
+                if acumulated_time > datetime.timedelta(seconds=0.1):
                     if control_strategy == 'discrete_jacobian':
-                        target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
+                        target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w), jacobian_matrix)
                     elif control_strategy == 'potential_field':
+                        print('time:', acumulated_time.total_seconds())
                         target_vector, theta, magnitude = gcf.potential_field(ptx, pty, (h, w),
-                                                                              acumulated_time.total_seconds())
+                                                                              acumulated_time.total_seconds(),
+                                                                              delta_border=25)
                     elif control_strategy == 'naive':
                         target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
 
+                    print(target_vectors[-1])
+                    print(target_vector)
                     target_vectors.append(target_vector)
                     thetas.append(theta)
                     magnitudes.append(magnitude)
-
                     if magnitude > 0:
                         print('actuate(x, y)')
-                        mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
-                        sleep(0.2)
+                        sleep(0.1)
                         act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
                         actuators_values.append(act)
                     elif magnitude == 0:
                         print('actuate(z)')
                         current_act_z = mc.serial_request(arduino_port_1)[2]/800 + 2
-                        act = mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
+                        act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
                         actuators_values.append(act)
+
+                    else:
+                        print('true')
+                        actuators_values.append([np.nan, np.nan, np.nan])
+
+                    acumulated_time = datetime.timedelta(seconds=0)
+
                 else:
                     if len(target_vectors) > 1:
                         actuators_values.append(actuators_values[-1])
@@ -215,13 +219,16 @@ def run_experiment(control_strategy='naive'):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser('Run Experiments')
-
+    controls_strategies_avialable = ['discrete_jacobian', 'naive', 'potential_field']
     parser.add_argument('--control_strategy', required=True,
-                        help='contro strategy: discrete_jacobian, naive, potential_field')
+                        help='control strategy: discrete_jacobian, naive, potential_field')
     parser.add_argument('--neural_network_dir', required=False,
                         metavar="str", default=os.getcwd(),
                         help='Directory where the tensorflow model to make predictions of images is saved')
 
     args = parser.parse_args()
+    if args.control_strategy in controls_strategies_avialable:
 
-    run_experiment(control_strategy=args.control_strategy)
+        run_experiment(control_strategy=args.control_strategy)
+    else:
+        print('control strategy not found, please use one of the following:', controls_strategies_avialable)
