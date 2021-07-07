@@ -135,30 +135,39 @@ def discrete_jacobian_control(target_x, target_y, img_shape, jacobian_matrix, ab
 
 
 def potential_field(target_x, target_y, img_shape, delta_time, delta_border=25, jacobian=[[1.0, 0.0], [0.0, 1.0]]):
-    inv_jacobian = jacobian
-    transformed_x = -(target_x - img_shape[0] / 2)
-    transformed_y = -(target_y - img_shape[1] / 2)
-    target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
-    target_vector = [0, 0]
-    theta = theta = math.atan2(float(transformed_y), float(transformed_x))
-    e_f = [0, 0]
-    k_a = 5
-    k_b = 1.0 * k_a
 
-    if target_distance < delta_border:
-        e_f[0] = k_a * transformed_x
-        e_f[1] = k_a * transformed_y
+    if delta_time < 0.5:
+
+        inv_jacobian = jacobian
+        transformed_x = -(target_x - (img_shape[0] / 2))
+        transformed_y = -(target_y - (img_shape[1] / 2))
+        target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
+        target_vector = [0, 0]
+        theta = theta = math.atan2(float(transformed_y), float(transformed_x))
+        e_f = [0, 0]
+        k_a = 1.5
+        k_b = delta_border * k_a
+
+        if target_distance < delta_border:
+            e_f[0] = k_a * transformed_x
+            e_f[1] = k_a * transformed_y
+        else:
+            #e_f[0] = k_b * (transformed_x/target_distance) - k_a * transformed_x
+            #e_f[1] = k_b * (transformed_y/target_distance) - k_a * transformed_y
+            e_f[0] = k_b * (transformed_x/target_distance)
+            e_f[1] = k_b * (transformed_y/target_distance)
+
+        v_x = e_f[0] * delta_time
+        v_y = e_f[1] * delta_time
+        target_vector[0] = (inv_jacobian[0][0] * v_x) + (inv_jacobian[0][1] * v_y)
+        target_vector[1] = (inv_jacobian[1][0] * v_x) + (inv_jacobian[1][1] * v_y)
+        magnitude = math.sqrt(target_vector[0]**2 + target_vector[1]**2)
+        if target_distance < 15:
+           magnitude = 0
     else:
-        e_f[0] = k_b * (transformed_x/target_distance)
-        e_f[1] = k_b * (transformed_y/target_distance)
-
-    v_x = e_f[0] * delta_time
-    v_y = e_f[1] * delta_time
-
-    target_vector[0] = (inv_jacobian[0][0] * v_x) + (inv_jacobian[0][1] * v_y)
-    target_vector[1] = (inv_jacobian[1][0] * v_x) + (inv_jacobian[1][1] * v_y)
-    magnitude = math.sqrt(target_vector[0]**2 + target_vector[1]**2)
-
+        target_vector = [np.nan, np.nan]
+        theta = np.nan
+        magnitude = np.nan
     return target_vector, theta, magnitude
 
 
