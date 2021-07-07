@@ -126,7 +126,7 @@ def run_experiment(control_strategy='naive'):
                     target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
                 elif control_strategy == 'potential_field':
                     target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
-                else:
+                elif control_strategy == 'naive':
                     target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
 
                 target_vectors.append(target_vector)
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser('Run Experiments')
 
     parser.add_argument('--control_strategy', required=True,
-                        help='contro strategy: discrete_jacobian, naive')
+                        help='contro strategy: discrete_jacobian, naive, potential_field')
     parser.add_argument('--neural_network_dir', required=False,
                         metavar="str", default=os.getcwd(),
                         help='Directory where the tensorflow model to make predictions of images is saved')
