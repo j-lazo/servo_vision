@@ -122,21 +122,23 @@ def run_experiment(control_strategy='naive'):
                 # center of the image
                 cv2.rectangle(output_image, (int(h / 2) - 3, int(w / 2) - 3), (int(h / 2) + 3, int(w / 2) + 3),
                               (0, 255, 255), -1)
-                if control_strategy == 'discrete_jacobian':
-                    target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
-                elif control_strategy == 'potential_field':
-                    target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
-                elif control_strategy == 'naive':
-                    target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
-
-                target_vectors.append(target_vector)
-                thetas.append(theta)
-                magnitudes.append(magnitude)
 
                 delta_time = (datetime.datetime.now()-init_time_epoch)
                 if acumulated_time > datetime.timedelta(seconds=0.3):
                     print(acumulated_time)
                     acumulated_time = datetime.timedelta(seconds=0)
+
+                    if control_strategy == 'discrete_jacobian':
+                        target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
+                    elif control_strategy == 'potential_field':
+                        target_vector, theta, magnitude = gcf.potential_field(ptx, pty, (h, w))
+                    elif control_strategy == 'naive':
+                        target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
+
+                    target_vectors.append(target_vector)
+                    thetas.append(theta)
+                    magnitudes.append(magnitude)
+
                     if magnitude > 0:
                         print('actuate(x, y)')
                         mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
@@ -149,7 +151,17 @@ def run_experiment(control_strategy='naive'):
                         act = mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
                         actuators_values.append(act)
                 else:
-                    actuators_values.append([np.nan, np.nan, np.nan])
+                    if len(target_vectors) > 1:
+                        actuators_values.append(actuators_values[-1])
+                        target_vectors.append(target_vectors[-1])
+                        thetas.append(thetas[-1])
+                        magnitudes.append(magnitudes[-1])
+                    else:
+                        actuators_values.append([np.nan, np.nan, np.nan])
+                        target_vectors.append([np.nan, np.nan])
+                        thetas.append(np.nan)
+                        magnitudes.append(np.nan)
+
 
             else:
                 actuators_values.append([np.nan, np.nan, np.nan])
