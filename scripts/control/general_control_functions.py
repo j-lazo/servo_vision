@@ -85,7 +85,7 @@ def nasty_control(target_x, target_y,
 
     # mapping the right zone
     unit_vector_x, unit_vector_y, theta = mapping_direction(transformed_x, transformed_y)
-    magnitude = mapping_distance(target_distance)
+    magnitude = mapping_distance(target_distance, control_strategy='nasty_descreete')
     target_vector = [unit_vector_x * magnitude, unit_vector_y * magnitude]
 
     return target_vector, theta, magnitude
@@ -122,7 +122,7 @@ def discrete_jacobian_control(target_x, target_y, img_shape, absolute_delta=30, 
         return [0.0, 0.0], 0.0, 0.0
     inv_jacobian = [[1.01, 0.02], [-0.038, 0.83]]/0.84
     target_vector = [0, 0]
-    magnitude = mapping_distance(target_distance)
+    magnitude = mapping_distance(target_distance, control_strategy='descrete_jacobian')
     p_gain = magnitude / 30.0
     theta = math.atan2(float(transformed_y), float(transformed_x))
     unit_vector = [np.cos(theta), np.sin(theta)]
