@@ -19,7 +19,8 @@ from computer_vision import call_models as cm
 import datetime
 import time
 from general_functions import data_managament as dm
-
+from matplotlib import pyplot as plt
+from matplotlib import cm
 
 def get_ground_truth_path(trajectory=0, number_of_times=2):
     type_trajectory = ['straight_line', 'right_curve', 'left_curve', 'right_s', 'left_s']
@@ -140,6 +141,66 @@ def get_ground_truth_path(trajectory=0, number_of_times=2):
 
     TRACKER.stop_tracking()
     TRACKER.close()
+
+
+def test_maping():
+    size_x = 256
+    size_y = 256
+    pts_x = np.linspace(0, size_x, num=size_x, endpoint=True)
+    pts_y = np.linspace(0, size_y, num=size_y, endpoint=True)
+    jacobian_matrix = [[0.83, -0.02], [0.038, 1.01]]
+    target_vector_x = []
+    target_vector_y = []
+    maping_magnitude = np.zeros([size_x, size_y])
+    maping_q1 = np.zeros([size_x, size_y])
+    maping_q2 = np.zeros([size_x, size_y])
+    img_shape = np.shape(maping_magnitude)
+    print(img_shape)
+    delta_time = 0.1
+    for i, point_x in enumerate(pts_x):
+        for j, point_y in enumerate(pts_y):
+            target_vector, theta, magnitude = gcf.potential_field(pts_x[i], pts_y[j],
+                                                                  img_shape, delta_time,
+                                                                  delta_border=25)
+            #target_vector, theta, magnitude = gcf.discrete_jacobian_control(pts_x[i], pts_y[j],
+            #                                                      img_shape,jacobian_matrix)
+            #target_vector, theta, magnitude = gcf.nasty_control(pts_x[i], pts_y[j],
+            #                                                      img_shape)
+            target_vector_x.append(target_vector[0])
+            target_vector_y.append(target_vector[1])
+            maping_magnitude[i, j] = magnitude
+            maping_q1[i, j] = target_vector[0]
+            maping_q2[i, j] = target_vector[1]
+
+    plt.figure()
+    plt.subplot(131)
+    plt.imshow(maping_magnitude)
+    plt.subplot(132)
+    plt.imshow(maping_q1)
+    plt.subplot(133)
+    plt.imshow(maping_q2)
+
+    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+
+    # Make data.
+    X = pts_x
+    Y = pts_y
+    X, Y = np.meshgrid(X, Y)
+    Z = maping_magnitude
+
+    # Plot the surface.
+    surf = ax.plot_wireframe(X, Y, Z)#, cmap=cm.coolwarm,
+                           #linewidth=0, antialiased=False)
+
+    # Customize the z axis.
+    #ax.set_zlim(-1.01, 1.01)
+    # A StrMethodFormatter is used automatically
+    ax.zaxis.set_major_formatter('{x:.02f}')
+
+    # Add a color bar which maps values to colors.
+    fig.colorbar(surf, shrink=0.5, aspect=5)
+
+    plt.show()
 
 
 def general_calibration():
@@ -1071,6 +1132,9 @@ if __name__ == "__main__":
         nasty_test()
     elif args.command == 'get_ground_truth_path':
         get_ground_truth_path()
+
+    elif args.command == 'test_maping':
+        test_maping()
 
     else:
         raise Exception("The command written was not found")
