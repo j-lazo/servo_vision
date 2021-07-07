@@ -126,12 +126,15 @@ def run_experiment(control_strategy='naive'):
                 delta_time = (datetime.datetime.now()-init_time_epoch)
                 if acumulated_time > datetime.timedelta(seconds=0.3):
                     print(acumulated_time)
+                    print(acumulated_time.total_seconds())
+                    print(type(acumulated_time.total_seconds()))
                     acumulated_time = datetime.timedelta(seconds=0)
 
                     if control_strategy == 'discrete_jacobian':
                         target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w))
                     elif control_strategy == 'potential_field':
-                        target_vector, theta, magnitude = gcf.potential_field(ptx, pty, (h, w))
+                        target_vector, theta, magnitude = gcf.potential_field(ptx, pty, (h, w),
+                                                                              acumulated_time.total_seconds())
                     elif control_strategy == 'naive':
                         target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
 
@@ -162,7 +165,6 @@ def run_experiment(control_strategy='naive'):
                         thetas.append(np.nan)
                         magnitudes.append(np.nan)
 
-
             else:
                 actuators_values.append([np.nan, np.nan, np.nan])
                 target_vectors.append([np.nan, np.nan])
@@ -170,8 +172,9 @@ def run_experiment(control_strategy='naive'):
                 magnitudes.append(np.nan)
                 print('no target detected, stop')
                 mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
-            #    cv2.imshow('video', frame)
+            # show video
             cv2.imshow('video', output_image)
+            # save video
             out.write(output_image)
 
         if key == ord('q'):

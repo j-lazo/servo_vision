@@ -85,7 +85,7 @@ def nasty_control(target_x, target_y,
 
     # mapping the right zone
     unit_vector_x, unit_vector_y, theta = mapping_direction(transformed_x, transformed_y)
-    magnitude = mapping_distance(target_distance, control_strategy='nasty_descreete')
+    magnitude = mapping_distance(target_distance, control_strategy='naive_discrete')
     target_vector = [unit_vector_x * magnitude, unit_vector_y * magnitude]
 
     return target_vector, theta, magnitude
@@ -112,7 +112,7 @@ def discrete_delay_control(target_x, target_y, img_shape, absolute_delta=30, p_g
     return target_vector, theta, magnitude  # Here we return a list!
 
 
-def discrete_jacobian_control(target_x, target_y, img_shape, absolute_delta=30, p_gain=1.0):
+def discrete_jacobian_control(target_x, target_y, img_shape, jacobian_matrix, absolute_delta=30, p_gain=1.0):
     if 0 < target_x < img_shape[0] and 0 < target_y < img_shape[1]:
         transformed_x = -(target_x - img_shape[0] / 2)
         transformed_y = -(target_y - img_shape[1] / 2)
@@ -120,32 +120,46 @@ def discrete_jacobian_control(target_x, target_y, img_shape, absolute_delta=30, 
     else:
         print("target out of boundary")
         return [0.0, 0.0], 0.0, 0.0
-    inv_jacobian = [[1.01, 0.02], [-0.038, 0.83]]/0.84
+    inv_jacobian = np.linalg.inv(np.array(jacobian_matrix))
     target_vector = [0, 0]
-    magnitude = mapping_distance(target_distance, control_strategy='descrete_jacobian')
+    magnitude = mapping_distance(target_distance, control_strategy='discrete_jacobian')
     p_gain = magnitude / 30.0
     theta = math.atan2(float(transformed_y), float(transformed_x))
     unit_vector = [np.cos(theta), np.sin(theta)]
-    target_vector[0] = p_gain * (inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y)
-    target_vector[1] = p_gain * (inv_jacobian[1][0] * transformed_x + inv_jacobian[1][1] * transformed_y)
+    transformed_x = transformed_x * p_gain
+    transformed_y = transformed_y * p_gain
+    target_vector[0] = inv_jacobian[0][0] * transformed_x + inv_jacobian[0][1] * transformed_y
+    target_vector[1] = inv_jacobian[1][0] * transformed_x + inv_jacobian[1][1] * transformed_y
 
-    return target_vector, theta, magnitude  # Here we return a list
+    return target_vector, theta, magnitude
 
 
-def potential_field(target_x, target_y, img_shape, delta_border=50):
-    external_force = 1
-    distance = np.sqrt(1.0*(target_x-img_shape[0])**2, 1.0*(target_y-img_shape[1])**2)
-    theta = np.tan()
-    k = 0.5
-    if distance > delta_border:
-        #2DO
-        # calculate the maximum an minimums according to the size of the images and the deltas
-        # then adjust k according to this
-        external_force = k * (distance)**2
+def potential_field(target_x, target_y, img_shape, delta_time, delta_border=25, jacobian=[[1.0, 0.0], [0.0, 1.0]]):
+    inv_jacobian = jacobian
+    transformed_x = -(target_x - img_shape[0] / 2)
+    transformed_y = -(target_y - img_shape[1] / 2)
+    target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
+    target_vector = [0, 0]
+    theta = theta = math.atan2(float(transformed_y), float(transformed_x))
+    e_f = [0, 0]
+    k_a = 5
+    k_b = 1.0 * k_a
+
+    if target_distance < delta_border:
+        e_f[0] = k_a * transformed_x
+        e_f[1] = k_a * transformed_y
     else:
-        external_force = k * (distance)
-    return external_force
+        e_f[0] = k_b * (transformed_x/target_distance)
+        e_f[1] = k_b * (transformed_y/target_distance)
 
+    v_x = e_f[0] * delta_time
+    v_y = e_f[1] * delta_time
+
+    target_vector[0] = (inv_jacobian[0][0] * v_x) + (inv_jacobian[0][1] * v_y)
+    target_vector[1] = (inv_jacobian[1][0] * v_x) + (inv_jacobian[1][1] * v_y)
+    magnitude = math.sqrt(target_vector[0]**2 + target_vector[1]**2)
+
+    return target_vector, theta, magnitude
 
 
 def update_jacobian_control(jacobian_mat, target_x, target_y, img_shape, absolute_delta=30, p_gain=1.0):
@@ -215,10 +229,6 @@ def update_jacobian(current_jacobian, previous_qs, point_x, point_y, previous_po
     return new_jacobian.tolist()
 
 
-def jacobian_transformation(transformed_x, transoformed_y):
-    return 0
-
-
 def mapping_direction(transformed_x, transformed_y):
     theta = math.atan2(float(transformed_y), float(transformed_x))
     # print ("input theta: ", math.degrees(theta))
@@ -262,7 +272,8 @@ def mapping_direction(transformed_x, transformed_y):
 
 
 def mapping_distance(target_distance, control_strategy='none'):
-    if control_strategy == 'none': # nasty
+    # nasty
+    if control_strategy == 'none':
         if target_distance > 200:
             magnitude = 25
         elif 200 > target_distance > 100:
@@ -272,8 +283,8 @@ def mapping_distance(target_distance, control_strategy='none'):
         else:
             magnitude = 0
 
-    elif control_strategy == 'nasty_descreete':
-    # nasty discreete
+    # nasty discrete
+    elif control_strategy == 'naive_discrete':
         if target_distance > 200:
             magnitude = 30
         elif 200 > target_distance > 100:
@@ -283,7 +294,7 @@ def mapping_distance(target_distance, control_strategy='none'):
         else:
             magnitude = 0
 
-    elif control_strategy == 'descrete_jacobian':
+    elif control_strategy == 'discrete_jacobian':
 
         if target_distance > 150:
             magnitude = 5
