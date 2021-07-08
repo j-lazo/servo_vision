@@ -88,6 +88,10 @@ def run_experiment(control_strategy):
         if ret is True and counter > 10:
             init_time_epoch = datetime.datetime.now()
             time_line.append(datetime.datetime.now())
+            #if input_size != 3:
+
+            output_image, point_x, point_y = cm.detect_lumen(model, frame)
+            #else:
             output_image, point_x, point_y = cm.detect_lumen(model, frame)
             center_points_x.append(point_x)
             center_points_y.append(point_y)
@@ -131,17 +135,24 @@ def run_experiment(control_strategy):
                         print('time:', acumulated_time.total_seconds())
                         target_vector, theta, magnitude = gcf.potential_field(ptx, pty, (h, w),
                                                                               acumulated_time.total_seconds(),
-                                                                              delta_border=25)
+                                                                              delta_border=30)
+                        cv2.circle(output_image, (int(h / 2), int(w / 2)), 30,
+                                   (0, 255, 0), 2)
                     elif control_strategy == 'naive':
                         target_vector, theta, magnitude = gcf.nasty_control(ptx, pty, (h, w))
+                    elif control_strategy == 'update_jacobian':
+                        jacobian_matrix = gcf.update_jacobian(jacobian_matrix, joint_variable_values[-2:],
+                                                          ptx, pty, filtered_points_x[-1], filtered_points_y[-1])
+                        target_vector, theta, magnitude = gcf.discrete_jacobian_control(ptx, pty, (h, w), jacobian_matrix)
 
-                    print(target_vectors[-1])
-                    print(target_vector)
                     target_vectors.append(target_vector)
                     thetas.append(theta)
                     magnitudes.append(magnitude)
                     if magnitude > 0:
                         print('actuate(x, y)')
+                        # the next 3 lines seems to avoid the robot to acumulate instruction and de-stabilize
+                        current_act_z = mc.serial_request(arduino_port_1)[2] / 800
+                        mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
                         sleep(0.1)
                         act = mc.serial_actuate(target_vector[0], target_vector[1], current_act_z, arduino_port_1)
                         actuators_values.append(act)
@@ -219,9 +230,9 @@ def run_experiment(control_strategy):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser('Run Experiments')
-    controls_strategies_avialable = ['discrete_jacobian', 'naive', 'potential_field']
+    controls_strategies_avialable = ['discrete_jacobian', 'naive', 'potential_field', 'update_jacobian']
     parser.add_argument('--control_strategy', required=True,
-                        help='control strategy: discrete_jacobian, naive, potential_field')
+                        help='control strategy: discrete_jacobian, naive, potential_field, update_jacobian')
     parser.add_argument('--neural_network_dir', required=False,
                         metavar="str", default=os.getcwd(),
                         help='Directory where the tensorflow model to make predictions of images is saved')

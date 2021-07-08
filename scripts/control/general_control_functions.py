@@ -145,15 +145,17 @@ def potential_field(target_x, target_y, img_shape, delta_time, delta_border=25, 
         target_vector = [0, 0]
         theta = theta = math.atan2(float(transformed_y), float(transformed_x))
         e_f = [0, 0]
-        k_a = 1.5
+        k_a = 1.0
         k_b = delta_border * k_a
 
+
         if target_distance < delta_border:
+            print('parabola case')
             e_f[0] = k_a * transformed_x
             e_f[1] = k_a * transformed_y
         else:
-            #e_f[0] = k_b * (transformed_x/target_distance) - k_a * transformed_x
-            #e_f[1] = k_b * (transformed_y/target_distance) - k_a * transformed_y
+            #e_f[0] = 0.75*k_b * (transformed_x/target_distance) + k_a * transformed_x
+            #e_f[1] = 0.75*k_b * (transformed_y/target_distance) + k_a * transformed_y
             e_f[0] = k_b * (transformed_x/target_distance)
             e_f[1] = k_b * (transformed_y/target_distance)
 
@@ -162,12 +164,13 @@ def potential_field(target_x, target_y, img_shape, delta_time, delta_border=25, 
         target_vector[0] = (inv_jacobian[0][0] * v_x) + (inv_jacobian[0][1] * v_y)
         target_vector[1] = (inv_jacobian[1][0] * v_x) + (inv_jacobian[1][1] * v_y)
         magnitude = math.sqrt(target_vector[0]**2 + target_vector[1]**2)
-        if target_distance < 15:
+        if target_distance < 0.65*delta_border:
            magnitude = 0
     else:
         target_vector = [np.nan, np.nan]
         theta = np.nan
         magnitude = np.nan
+    print(target_vector)
     return target_vector, theta, magnitude
 
 
@@ -212,30 +215,34 @@ def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_s
 
 def update_jacobian(current_jacobian, previous_qs, point_x, point_y, previous_point_x, previous_point_y,
                     beta=0.05):
-    print(previous_qs)
-    zipped_lists = zip(previous_qs[-1], previous_qs[-2])
-    delta_q = [x - y for (x, y) in zipped_lists][:2]
 
-    delta_q = np.array(delta_q).astype(float)
-    delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y]).astype(
-        float)
-    current_jacobian = np.array(current_jacobian)
-    print('delta q', delta_q)
-    if delta_q[0] == 0 and delta_q[1] == 0:
-        new_jacobian = current_jacobian
+    if not(np.isnan(previous_qs[-1][0])) and not(np.isnan(previous_qs[-1][1])):
+        zipped_lists = zip(previous_qs[-1], previous_qs[-2])
+        delta_q = [x - y for (x, y) in zipped_lists][:2]
+
+        delta_q = np.array(delta_q).astype(float)
+        delta_actual_displacement = np.array([point_x - previous_point_x, point_y - previous_point_y]).astype(
+            float)
+        current_jacobian = np.array(current_jacobian)
+        print('delta q', delta_q)
+        if delta_q[0] == 0 and delta_q[1] == 0:
+            new_jacobian = current_jacobian
+        else:
+            print("current_jacobian:", current_jacobian)
+            print("delta_actual_displacement:", delta_actual_displacement)
+            print("delta_q:", delta_q)
+            print("JkQk:", np.matmul(current_jacobian, delta_q))
+            print("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
+            print("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
+            print("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
+            new_jacobian = current_jacobian + beta * np.outer(
+                delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q,
+                                                                                                              delta_q)
+            new_jacobian = new_jacobian.tolist()
     else:
-        print("current_jacobian:", current_jacobian)
-        print("delta_actual_displacement:", delta_actual_displacement)
-        print("delta_q:", delta_q)
-        print("JkQk:", np.matmul(current_jacobian, delta_q))
-        print("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
-        print("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
-        print("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
-        new_jacobian = current_jacobian + beta * np.outer(
-            delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q,
-                                                                                                          delta_q)
+        new_jacobian = current_jacobian
 
-    return new_jacobian.tolist()
+    return new_jacobian
 
 
 def mapping_direction(transformed_x, transformed_y):
