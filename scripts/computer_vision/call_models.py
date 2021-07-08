@@ -14,7 +14,6 @@ def load_model(project_folder, name_model):
     model = tf.keras.models.load_model(name_model,
                                        custom_objects={'loss': cvf.dice_coef_loss},
                                        compile=False)
-    print(model.layers[0].output_shape)
     input_size = (len(model.layers[0].output_shape[0])) - 1
 
     return model, input_size
