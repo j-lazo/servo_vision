@@ -17,6 +17,32 @@ def paint_image(painted_image, center_point_x, center_point_y,
 
     return painted_image
 
+
+def build_input_network(img_modality, ):
+
+    def read_image_test(path, img_modality='rgb'):
+        if img_modality == 'npy':
+            x = np.load(path, allow_pickle=True)
+            x = np.resize(x, (3, 256, 256, 3))
+            x = x / 255.0
+
+        elif img_modality == 'ensemble':
+            x_vol = np.load(path, allow_pickle=True)
+            x_vol = np.resize(x_vol, (3, 256, 256, 3))
+            x_vol = x_vol / 255.0
+            x_frame = x_vol[0]
+            x_frame = cv2.resize(x_frame, (256, 256))
+            x_frame = x_frame / 255.0
+            x = x_vol, x_frame
+
+        else:
+            x = cv2.imread(path, cv2.IMREAD_COLOR)
+            x = cv2.resize(x, (256, 256))
+            x = x / 255.0
+
+    return input_network
+
+
 def calculate_middle_point_chessboard(corners):
 
     """
