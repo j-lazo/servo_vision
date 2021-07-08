@@ -123,7 +123,8 @@ def discrete_jacobian_control(target_x, target_y, img_shape, jacobian_matrix, ab
     inv_jacobian = np.linalg.inv(np.array(jacobian_matrix))
     target_vector = [0, 0]
     magnitude = mapping_distance(target_distance, control_strategy='discrete_jacobian')
-    p_gain = magnitude / 30.0
+    # p_gain = 0.11
+    p_gain = 0.07
     theta = math.atan2(float(transformed_y), float(transformed_x))
     unit_vector = [np.cos(theta), np.sin(theta)]
     transformed_x = transformed_x * p_gain
@@ -136,23 +137,27 @@ def discrete_jacobian_control(target_x, target_y, img_shape, jacobian_matrix, ab
 
 def potential_field(target_x, target_y, img_shape, delta_time, delta_border=25, jacobian=[[1.0, 0.0], [0.0, 1.0]]):
 
+    def f_k(distance, delta):
+        return np.min([1.0, (distance/delta) + 0.4])
+
     if delta_time < 0.5:
 
-        inv_jacobian = jacobian
+        inv_jacobian = np.linalg.inv(np.array(jacobian))
         transformed_x = -(target_x - (img_shape[0] / 2))
         transformed_y = -(target_y - (img_shape[1] / 2))
         target_distance = math.sqrt(transformed_x ** 2 + transformed_y ** 2)
         target_vector = [0, 0]
         theta = theta = math.atan2(float(transformed_y), float(transformed_x))
         e_f = [0, 0]
-        k_a = 1.0
+        k_a = 0.5 * f_k(target_distance, delta_border)
         k_b = delta_border * k_a
 
-
-        if target_distance < delta_border:
+        if target_distance <= delta_border:
             print('parabola case')
             e_f[0] = k_a * transformed_x
             e_f[1] = k_a * transformed_y
+            #e_f[0] = k_b * (transformed_x / target_distance)
+            #e_f[1] = k_b * (transformed_y / target_distance)
         else:
             #e_f[0] = 0.75*k_b * (transformed_x/target_distance) + k_a * transformed_x
             #e_f[1] = 0.75*k_b * (transformed_y/target_distance) + k_a * transformed_y
@@ -214,7 +219,7 @@ def jacobian_correction_velocity_control(new_jacobian, target_x, target_y, img_s
 
 
 def update_jacobian(current_jacobian, previous_qs, point_x, point_y, previous_point_x, previous_point_y,
-                    beta=0.05):
+                    beta=0.02):
 
     if not(np.isnan(previous_qs[-1][0])) and not(np.isnan(previous_qs[-1][1])):
         zipped_lists = zip(previous_qs[-1], previous_qs[-2])
@@ -228,16 +233,17 @@ def update_jacobian(current_jacobian, previous_qs, point_x, point_y, previous_po
         if delta_q[0] == 0 and delta_q[1] == 0:
             new_jacobian = current_jacobian
         else:
-            print("current_jacobian:", current_jacobian)
-            print("delta_actual_displacement:", delta_actual_displacement)
-            print("delta_q:", delta_q)
-            print("JkQk:", np.matmul(current_jacobian, delta_q))
-            print("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
-            print("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
-            print("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
+            # print("current_jacobian:", current_jacobian)
+            # print("delta_actual_displacement:", delta_actual_displacement)
+            # print("delta_q:", delta_q)
+            # print("JkQk:", np.matmul(current_jacobian, delta_q))
+            # print("x-JkQk:", delta_actual_displacement - np.matmul(current_jacobian, delta_q))
+            # print("(x-JkQk)*Qk^T: ", np.outer(delta_actual_displacement - np.matmul(current_jacobian, delta_q), delta_q))
+            # print("Qk^T:", np.array([delta_q]).transpose(), np.array([delta_q]).transpose()[0])
             new_jacobian = current_jacobian + beta * np.outer(
                 delta_actual_displacement - np.matmul(current_jacobian, delta_q), np.array(delta_q)) / np.dot(delta_q,
                                                                                                               delta_q)
+            print(new_jacobian)
             new_jacobian = new_jacobian.tolist()
     else:
         new_jacobian = current_jacobian
@@ -317,7 +323,7 @@ def mapping_distance(target_distance, control_strategy='none'):
         elif 150 >= target_distance > 22:
             magnitude = 6
         else:
-            magnitude = 0
+            magnitude = 1
 
     elif control_strategy == 'jacobian':
 
