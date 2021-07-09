@@ -4,6 +4,35 @@ import pandas as pd
 import numpy as np
 import glob
 import time
+import data_managament as dm
+
+
+def analyze_data_single_experiment(file_directory):
+    json_file_dir = file_directory + 'calibration_data.json'
+    files_in_dir = os.listdir(file_directory)
+    json_file = [file for file in files_in_dir if file.endswith('.json')][0]
+    csv_file = [file for file in files_in_dir if file.endswith('.csv')][0]
+    calibration_data = dm.read_data_json(file_directory + json_file)
+
+    experiment_data = pd.read_csv(file_directory + csv_file, skipinitialspace=True)
+
+    sensor_1_x = experiment_data['sensor 1 x'].tolist()
+    sensor_2_x = experiment_data['sensor 2 x'].tolist()
+    sensor_3_x = experiment_data['sensor 3 x'].tolist()
+
+    sensor_1_y = experiment_data['sensor 1 y'].tolist()
+    sensor_2_y = experiment_data['sensor 2 y'].tolist()
+    sensor_3_y = experiment_data['sensor 3 y'].tolist()
+
+    sensor_1_z = experiment_data['sensor 1 z'].tolist()
+    sensor_2_z = experiment_data['sensor 2 z'].tolist()
+    sensor_3_z = experiment_data['sensor 3 z'].tolist()
+
+    plt.figure()
+    plt.plot(calibration_data['limit_point_z'][:24], calibration_data['limit_point_y'][:24], 'o')
+    plt.plot(sensor_1_z, sensor_1_y, 'r-*')
+    plt.plot(sensor_2_z, sensor_2_y, 'y-*')
+    plt.plot(sensor_3_z, sensor_3_y, 'g-*')
 
 
 def discretise_series_horizontal(data_list):
@@ -539,16 +568,17 @@ def plot_3D_data(directory_results):
     plt.subplot(212)
     plt.plot(oz, average_y, '--', label='average')
     plt.xlabel('y (mm)')
-
     plt.legend(loc='best')
-
     plt.show()
 
 
-
 if __name__ == '__main__':
-    directory_2 = os.getcwd() + '/results/n_control/straight_line/'
+    # plot 3_D data
+    #directory_2 = os.getcwd() + '/results/n_control/straight_line/'
     #analyze_results(directory)
-    directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
-    plot_3D_data(directory_1)
+    #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
+    #plot_3D_data(directory_1)
+    directory = os.getcwd() + '/results/experiment_discrete_jacobian_09_07_2021_18_43/'
+    analyze_data_single_experiment(directory)
+
     plt.show()
