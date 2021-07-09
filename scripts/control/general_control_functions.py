@@ -156,11 +156,7 @@ def potential_field(target_x, target_y, img_shape, delta_time, delta_border=25, 
             print('parabola case')
             e_f[0] = k_a * transformed_x
             e_f[1] = k_a * transformed_y
-            #e_f[0] = k_b * (transformed_x / target_distance)
-            #e_f[1] = k_b * (transformed_y / target_distance)
         else:
-            #e_f[0] = 0.75*k_b * (transformed_x/target_distance) + k_a * transformed_x
-            #e_f[1] = 0.75*k_b * (transformed_y/target_distance) + k_a * transformed_y
             e_f[0] = k_b * (transformed_x/target_distance)
             e_f[1] = k_b * (transformed_y/target_distance)
 
@@ -320,10 +316,10 @@ def mapping_distance(target_distance, control_strategy='none'):
 
         if target_distance > 150:
             magnitude = 5
-        elif 150 >= target_distance > 22:
+        elif 150 >= target_distance > 18:
             magnitude = 6
         else:
-            magnitude = 1
+            magnitude = 0
 
     elif control_strategy == 'jacobian':
 
