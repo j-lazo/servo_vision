@@ -5,6 +5,31 @@ import tensorflow as tf
 import csv
 import os
 import datetime
+import yaml
+import json
+
+
+def read_data_json(file_name):
+    f = open(file_name)
+    data = json.load(f)
+    f.close()
+
+    return data
+
+
+def save_data_json(dictionary, results_folder):
+    name_file = ''.join([results_folder, 'calibration_data.json'])
+    with open(name_file, "w") as outfile:
+        json.dump(dictionary, outfile)
+    return name_file
+
+
+def save_data_yaml(dictionary, results_folder):
+    name_file = ''.join([results_folder, 'calibration_data.yaml'])
+    print(dictionary)
+    with open(name_file, 'w') as file:
+        file.dump(dictionary, name_file)
+    return name_file
 
 
 def save_data_sensors(data_vector, date_experiment, type_trajectory):
@@ -53,8 +78,7 @@ def save_data_sensors(data_vector, date_experiment, type_trajectory):
     print('Saved at:', name_test_csv_file)
 
 
-def save_data(data_vector, date_experiment):
-    results_folder = ''.join([os.getcwd(), '/results/experiment_', date_experiment.strftime("%d_%m_%Y_%H_%M"), '/'])
+def save_data(data_vector, results_folder, date_experiment):
     if not os.path.isdir(results_folder):
         os.mkdir(results_folder)
 
