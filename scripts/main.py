@@ -64,6 +64,11 @@ def run_experiment(control_strategy):
     sensor_3_points_x = []
     sensor_3_points_y = []
     sensor_3_points_z = []
+
+    limit_points_x = []
+    limit_points_y = []
+    limit_points_z = []
+
     time_line = []
     joint_variable_values = []
     target_vectors = []
@@ -77,6 +82,7 @@ def run_experiment(control_strategy):
     delta_time = datetime.timedelta(seconds=0)
     jacobian_matrix = [[0.83, -0.02], [0.038, 1.01]]
     counter = 0
+    print('Please input 6 points for each corner of the trajectory to follow')
     while cap.isOpened():
         key = cv2.waitKey(1) & 0xFF
         prev = 0
@@ -85,7 +91,8 @@ def run_experiment(control_strategy):
         time_elapsed = time.time() - prev
         port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
 
-        if ret is True and counter > 10:
+        # Run the experiment
+        if ret is True and counter > 10 and len(limit_points_x) >= 48:
             init_time_epoch = datetime.datetime.now()
             time_line.append(datetime.datetime.now())
             #if input_size != 3:
@@ -201,6 +208,17 @@ def run_experiment(control_strategy):
             # save video
             out.write(output_image)
 
+        else:
+            print("please collect the calibration data, press 's' to save a point")
+            cv2.imshow('video', frame)
+
+        # acquire data for calibration
+        if key == ord('s'):
+            limit_points_x.append(tracking[3][0][3])
+            limit_points_y.append(tracking[3][1][3])
+            limit_points_z.append(tracking[3][2][3])
+            print('point saved')
+
         if key == ord('q'):
             stop_z = mc.serial_request(arduino_port_1)[2]/800
             mc.serial_actuate(0, 0, 0, arduino_port_1)
@@ -227,7 +245,11 @@ def run_experiment(control_strategy):
                    jacobian_matrices]
 
     mc.serial_actuate(0, 0, initial_z, arduino_port_1)
+    dictionary = {"limit_point_x": limit_points_x,
+                  "limit_point_y": limit_points_y,
+                  "limit_point_z": limit_points_z}
 
+    dm.save_data_json(dictionary, results_folder)
     dm.save_data(data_vector, results_folder, date_experiment)
     TRACKER.stop_tracking()
     TRACKER.close()
