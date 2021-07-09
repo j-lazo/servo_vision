@@ -20,7 +20,8 @@ import datetime
 import time
 from general_functions import data_managament as dm
 from matplotlib import pyplot as plt
-from matplotlib import cm
+from matplotlib.animation import FuncAnimation
+
 
 def get_ground_truth_path(trajectory=0, number_of_times=2):
     type_trajectory = ['straight_line', 'right_curve', 'left_curve', 'right_s', 'left_s']
@@ -141,6 +142,48 @@ def get_ground_truth_path(trajectory=0, number_of_times=2):
 
     TRACKER.stop_tracking()
     TRACKER.close()
+
+
+def test_pen():
+
+    SETTINGS = {
+        "tracker type": "aurora",
+        "romfiles": [''.join([os.getcwd(), '/scripts/em_tracking/080082.rom'])]
+    }
+    print('connecting with sensor...')
+
+    TRACKER = NDITracker(SETTINGS)
+    TRACKER.start_tracking()
+
+    points_x = []
+    points_y = []
+    points_z = []
+    cap = cv2.VideoCapture(0)
+
+    while cap.isOpened():
+        port_handles, timestamps, framenumbers, tracking, quality = TRACKER.get_frame()
+        key = cv2.waitKey(1) & 0xFF
+        ret, frame = cap.read()
+        cv2.imshow('video', frame)
+        if key == ord('s'):
+
+            points_x.append(tracking[3][0][3])
+            points_y.append(tracking[3][1][3])
+            points_z.append(tracking[3][2][3])
+            print(' point saved')
+
+        elif key == ord('q'):
+            TRACKER.stop_tracking()
+            TRACKER.close()
+            cap.release()
+            cv2.destroyAllWindows()
+
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(points_z, points_y, '*')
+    plt.subplot(122)
+    plt.plot(points_z, points_x, '*')
+    plt.show()
 
 
 def test_maping():
@@ -897,6 +940,108 @@ def test_sensor():
     TRACKER.close()
 
 
+def test_visual_feedback():
+    max_speed = 35
+    mins_speed = 1
+    prev_key = 0
+    defined_speed = 5
+    z = 0
+    cap = cv2.VideoCapture(0)
+    port_arduino = find_arduino.find_arduino()
+    print('Arduino detected at:', port_arduino)
+    arduino_port_1 = mc.serial_initialization(arduino_com_port_1=str(port_arduino))
+    center_points_x = []
+    center_points_y = []
+    filtered_points_x = []
+    filtered_points_y = []
+
+    project_folder = os.getcwd() + '/scripts/computer_vision/models/weights/'
+    folder_model = 'Transpose_ResUnet_lr_0.001_bs_16_rgb_27_05_2021_13_03'
+    # load the model and get input size of the model
+    model, input_size = cm.load_model(project_folder, folder_model)
+    print('input size', input_size)
+    print('Please input 6 points for each corner of the trajectory to follow')
+    while cap.isOpened():
+        key = cv2.waitKey(1) & 0xFF
+        prev = 0
+        ret, frame = cap.read()
+
+        if key == 43 and defined_speed <= max_speed:
+            defined_speed = defined_speed + 1
+            print('speed', defined_speed)
+            key = prev_key
+        if key == 45 and defined_speed >= mins_speed:
+            defined_speed = defined_speed - 1
+            print('speed', defined_speed)
+        if key == 83:
+            print('right')
+            mc.serial_actuate(-defined_speed, 0, z, arduino_port_1)
+        elif key == 81:
+            print('left')
+            mc.serial_actuate(defined_speed, 0, z, arduino_port_1)
+        elif key == 82:
+            print('up')
+            mc.serial_actuate(0, defined_speed, z, arduino_port_1)
+        elif key == 84:
+            print('down')
+            mc.serial_actuate(0, -defined_speed, z, arduino_port_1)
+        elif key == ord('f'):
+            print('forward')
+            z = z + 1
+            mc.serial_actuate(0, 0, z, arduino_port_1)
+        elif key == ord('b'):
+            print('backwards')
+            z = z - 1
+            mc.serial_actuate(0, 0, z, arduino_port_1)
+
+        elif key == ord('s'):
+            print('stop')
+            z_stop = mc.serial_request(arduino_port_1)[2]/800
+            z = mc.serial_request(arduino_port_1)[2]/800
+            mc.serial_actuate(0, 0, z_stop, arduino_port_1)
+        #else:
+            #mc.serial_actuate(0, 0, z, arduino_port_1)
+
+        prev_key = key
+
+        if ret is True:
+
+            output_image, point_x, point_y = cm.detect_lumen(model, frame)
+            center_points_x.append(point_x)
+            center_points_y.append(point_y)
+
+            ptx = dm.calculate_average_points(center_points_x[-4:])
+            pty = dm.calculate_average_points(center_points_y[-4:])
+            filtered_points_x.append(ptx)
+            filtered_points_y.append(pty)
+            # if a point is detected
+            current_act_joint_variable = mc.serial_request(arduino_port_1)
+            if not (np.isnan(ptx)) and not (np.isnan(pty)):
+
+                h, w, d = np.shape(output_image)
+                print('target distance:', ptx, pty)
+                output_image = cvf.paint_image(output_image, ptx, pty, radius_center_point=10,
+                                               radius_delta_1=25, radius_delta_2=45)
+                cv2.line(output_image, (int(w / 2), 0), (int(w / 2), h), (0, 255, 255), 3)
+                cv2.line(output_image, (0, int(h / 2)), (w, int(h / 2)), (0, 255, 255), 3)
+                cv2.circle(output_image, (int(w / 2), int(h / 2)), 90, (0, 0, 255), 3)
+
+                # center of the image
+                cv2.rectangle(output_image, (int(h / 2) - 3, int(w / 2) - 3), (int(h / 2) + 3, int(w / 2) + 3),
+                              (0, 255, 255), -1)
+
+            cv2.imshow('video', output_image)
+
+
+        if key == ord('q'):
+            stop_z = mc.serial_request(arduino_port_1)[2]/800
+            mc.serial_actuate(0, 0, 0, arduino_port_1)
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+
 def test_camera():
     """
     This function returns video from the first webcam to the computer.
@@ -1132,9 +1277,12 @@ if __name__ == "__main__":
         nasty_test()
     elif args.command == 'get_ground_truth_path':
         get_ground_truth_path()
-
     elif args.command == 'test_maping':
         test_maping()
+    elif args.command == 'test_pen':
+        test_pen()
+    elif args.command == 'test_visual_feedback':
+        test_visual_feedback()
 
     else:
         raise Exception("The command written was not found")
