@@ -114,13 +114,9 @@ def EM_to_reference_center(array1, array2, center):
     return array1, array2
 
 
-
-
-
-
 image_shape = (300, 300)
 
-result_right_curve_good = 'C:\Users\cflai\Documents\TROspecial\experiment_07_06_2021_17_20_right_curve_good__D\experiment_07_06_2021_17_20_.csv'
+result_right_curve_good = '/home/nearlab/Jorge/current_work/robot_vision/results/n_control/straight_line/experiment_11_06_2021_18_19_straight_line_n_control/experiment_11_06_2021_18_19_.csv'
 csv_file = read_file_name()
 df = pd.read_csv(csv_file)
 vision_point_x = read_csv(df, 'vis point x')
