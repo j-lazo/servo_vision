@@ -788,6 +788,288 @@ def analyze_centering_task(dir_folder):
     plt.legend(loc='best')
 
 
+def analyze_navigation_task(dir_folder):
+
+    list_folders = os.listdir(dir_folder)
+    jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
+    potential_field = [folder for folder in list_folders if "potential_field" in folder]
+
+    list_sensor_1_x_jacobian = []
+    list_sensor_1_y_jacobian = []
+    list_sensor_1_z_jacobian = []
+
+    list_sensor_2_x_jacobian = []
+    list_sensor_2_y_jacobian = []
+    list_sensor_2_z_jacobian = []
+
+    list_sensor_3_x_jacobian = []
+    list_sensor_3_y_jacobian = []
+    list_sensor_3_z_jacobian = []
+
+    average_J_x = []
+    average_J_y = []
+    average_J_z = []
+
+    list_sensor_1_x_potential = []
+    list_sensor_1_y_potential = []
+    list_sensor_1_z_potential = []
+
+    list_sensor_2_x_potential = []
+    list_sensor_2_y_potential = []
+    list_sensor_2_z_potential = []
+
+    list_sensor_3_x_potential = []
+    list_sensor_3_y_potential = []
+    list_sensor_3_z_potential = []
+
+    average_P_x = []
+    average_P_y = []
+    average_P_z = []
+
+    calibration_data_x_point_1_j = []
+    calibration_data_y_point_1_j = []
+    calibration_data_z_point_1_j = []
+
+    calibration_data_x_point_2_j = []
+    calibration_data_y_point_2_j = []
+    calibration_data_z_point_2_j = []
+
+    calibration_data_x_point_3_j = []
+    calibration_data_y_point_3_j = []
+    calibration_data_z_point_3_j = []
+
+    calibration_data_x_point_4_j = []
+    calibration_data_y_point_4_j = []
+    calibration_data_z_point_4_j = []
+
+
+    calibration_data_x_point_1_p = []
+    calibration_data_y_point_1_p = []
+    calibration_data_z_point_1_p = []
+
+    calibration_data_x_point_2_p = []
+    calibration_data_y_point_2_p = []
+    calibration_data_z_point_2_p = []
+
+    calibration_data_x_point_3_p = []
+    calibration_data_y_point_3_p = []
+    calibration_data_z_point_3_p = []
+
+    calibration_data_x_point_4_p = []
+    calibration_data_y_point_4_p = []
+    calibration_data_z_point_4_p = []
+
+    list_target_x_jacobian = []
+    list_target_y_jacobian = []
+    list_target_x_potential = []
+    list_target_y_potential = []
+
+    for j, folder in enumerate(potential_field):
+        j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
+        calibration_points = dm.read_data_json(os.path.join(dir_folder, folder, j_son_file))
+
+        calibration_data_x_point_1_p.append(calibration_points["limit_point_x"][:6])
+        calibration_data_x_point_2_p.append(calibration_points["limit_point_x"][13:17])
+        calibration_data_x_point_3_p.append(calibration_points["limit_point_x"][25:30])
+        calibration_data_x_point_4_p.append(calibration_points["limit_point_x"][38:40])
+
+        calibration_data_y_point_1_p.append(calibration_points["limit_point_y"][:6])
+        calibration_data_y_point_2_p.append(calibration_points["limit_point_y"][13:18])
+        calibration_data_y_point_3_p.append(calibration_points["limit_point_y"][25:30])
+        calibration_data_y_point_4_p.append(calibration_points["limit_point_y"][38:40])
+
+        calibration_data_z_point_1_p.append(calibration_points["limit_point_z"][:6])
+        calibration_data_z_point_2_p.append(calibration_points["limit_point_z"][13:18])
+        calibration_data_z_point_3_p.append(calibration_points["limit_point_z"][25:30])
+        calibration_data_z_point_4_p.append(calibration_points["limit_point_z"][38:40])
+
+        data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+
+        list_target_x_potential.append(data['filtered x'].tolist())
+        list_target_y_potential.append(data['filtered y'].tolist())
+
+        list_sensor_1_x_potential.append(data['sensor 1 x'].tolist())
+        list_sensor_1_y_potential .append(data['sensor 1 y'].tolist())
+        list_sensor_1_z_potential.append(data['sensor 1 z'].tolist())
+
+        list_sensor_2_x_potential.append(data['sensor 2 x'].tolist())
+        list_sensor_2_y_potential.append(data['sensor 2 y'].tolist())
+        list_sensor_2_z_potential.append(data['sensor 2 z'].tolist())
+
+        list_sensor_3_x_potential.append(data['sensor 3 x'].tolist())
+        list_sensor_3_y_potential.append(data['sensor 3 y'].tolist())
+        list_sensor_3_z_potential.append(data['sensor 3 z'].tolist())
+
+    for j, list in enumerate(list_sensor_1_x_potential):
+        average_x = []
+        average_z = []
+        average_y = []
+        for i in range(len(list)):
+            average_x.append((list_sensor_1_x_potential[j][i] + list_sensor_2_x_potential[j][i] + list_sensor_3_x_potential[j][i])/3)
+            average_y.append((list_sensor_1_y_potential[j][i] + list_sensor_2_y_potential[j][i] + list_sensor_3_y_potential[j][i])/3)
+            average_z.append((list_sensor_1_z_potential[j][i] + list_sensor_2_z_potential[j][i] + list_sensor_3_z_potential[j][i])/3)
+
+        average_P_x.append(average_x)
+        average_P_y.append(average_y)
+        average_P_z.append(average_z)
+
+    for j, folder in enumerate(jacobian_results):
+        j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
+        calibration_points = dm.read_data_json(os.path.join(dir_folder, folder, j_son_file))
+
+        calibration_data_x_point_1_j.append(calibration_points["limit_point_x"][:6])
+        calibration_data_x_point_2_j.append(calibration_points["limit_point_x"][13:18])
+        calibration_data_x_point_3_j.append(calibration_points["limit_point_x"][25:30])
+        calibration_data_x_point_4_j.append(calibration_points["limit_point_x"][38:40])
+
+        calibration_data_y_point_1_j.append(calibration_points["limit_point_y"][:6])
+        calibration_data_y_point_2_j.append(calibration_points["limit_point_y"][13:18])
+        calibration_data_y_point_3_j.append(calibration_points["limit_point_y"][25:30])
+        calibration_data_y_point_4_j.append(calibration_points["limit_point_y"][38:40])
+
+        calibration_data_z_point_1_j.append(calibration_points["limit_point_z"][:6])
+        calibration_data_z_point_2_j.append(calibration_points["limit_point_z"][13:18])
+        calibration_data_z_point_3_j.append(calibration_points["limit_point_z"][25:30])
+        calibration_data_z_point_4_j.append(calibration_points["limit_point_z"][38:40])
+
+        data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+
+
+        list_target_x_jacobian.append(data['filtered x'].tolist())
+        list_target_y_jacobian.append(data['filtered y'].tolist())
+
+        list_sensor_1_x_jacobian.append(data['sensor 1 x'].tolist())
+        list_sensor_1_y_jacobian .append(data['sensor 1 y'].tolist())
+        list_sensor_1_z_jacobian.append(data['sensor 1 z'].tolist())
+
+        list_sensor_2_x_jacobian.append(data['sensor 2 x'].tolist())
+        list_sensor_2_y_jacobian.append(data['sensor 2 y'].tolist())
+        list_sensor_2_z_jacobian.append(data['sensor 2 z'].tolist())
+
+        list_sensor_3_x_jacobian.append(data['sensor 3 x'].tolist())
+        list_sensor_3_y_jacobian.append(data['sensor 3 y'].tolist())
+        list_sensor_3_z_jacobian.append(data['sensor 3 z'].tolist())
+
+    for j, list in enumerate(list_sensor_1_x_jacobian):
+        average_jx = []
+        average_jz = []
+        average_jy = []
+        for i in range(len(list)):
+            average_jx.append((list_sensor_1_x_jacobian[j][i] + list_sensor_2_x_jacobian[j][i] + list_sensor_3_x_jacobian[j][i])/3)
+            average_jy.append((list_sensor_1_y_jacobian[j][i] + list_sensor_2_y_jacobian[j][i] + list_sensor_3_y_jacobian[j][i])/3)
+            average_jz.append((list_sensor_1_z_jacobian[j][i] + list_sensor_2_z_jacobian[j][i] + list_sensor_3_z_jacobian[j][i])/3)
+
+        average_J_x.append(average_jx)
+        average_J_y.append(average_jy)
+        average_J_z.append(average_jz)
+
+    plt.figure()
+    ax = plt.axes(projection='3d')
+    for j in range(len(calibration_data_x_point_1_j)):
+        ax.scatter3D(calibration_data_x_point_1_j[j], calibration_data_y_point_1_j[j],
+                     calibration_data_z_point_1_j[j], cmap='Reds')
+        ax.scatter3D(calibration_data_x_point_2_j[j], calibration_data_y_point_2_j[j],
+                     calibration_data_z_point_2_j[j], cmap='Reds')
+        ax.scatter3D(calibration_data_x_point_3_j[j], calibration_data_y_point_3_j[j],
+                     calibration_data_z_point_3_j[j], cmap='Reds')
+        ax.scatter3D(calibration_data_x_point_4_j[j], calibration_data_y_point_4_j[j],
+                     calibration_data_z_point_4_j[j], cmap='Reds')
+        ax.scatter3D(average_J_x[j], average_J_y[j], average_J_z[j])
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+
+    plt.figure()
+    ax2 = plt.axes(projection='3d')
+    for j in range(len(calibration_data_x_point_1_j)):
+        ax2.scatter3D(calibration_data_x_point_1_p[j], calibration_data_y_point_1_p[j],
+                     calibration_data_z_point_1_p[j], cmap='Reds')
+        #ax.scatter3D(calibration_data_x_point_2_p[j], calibration_data_y_point_2_p[j],
+        #             calibration_data_z_point_2_p[j], cmap='Reds')
+        ax2.scatter3D(calibration_data_x_point_3_p[j], calibration_data_y_point_3_p[j],
+                     calibration_data_z_point_3_p[j], cmap='Reds')
+        ax2.scatter3D(calibration_data_x_point_4_p[j], calibration_data_y_point_4_p[j],
+                     calibration_data_z_point_4_p[j], cmap='Reds')
+        ax2.scatter3D(average_P_x[j], average_P_y[j], average_P_z[j])
+
+    ax2.set_xlabel('X')
+    ax2.set_ylabel('Y')
+    ax2.set_zlabel('Z')
+    plt.show()
+
+    plt.figure(3)
+    for j in range(len(average_J_z)):
+        center_x = (np.mean(calibration_data_x_point_4_j[j]) / 2 - np.mean(calibration_data_x_point_2_j[j]) / 2) + \
+                   np.max([np.mean(calibration_data_x_point_4_j[j]), np.mean(calibration_data_x_point_2_j[j])]) + 5
+        center_y = (np.mean(calibration_data_z_point_2_j[j]) / 2 - np.mean(calibration_data_z_point_1_j[j]) / 2) + \
+                   np.min([np.mean(calibration_data_z_point_2_j[j]), np.mean(calibration_data_z_point_1_j[j])])
+        print(center_x, center_y, 'jacobian')
+        path_x = np.ones(len(average_J_y[j])) * center_x
+        path_y = np.ones(len(average_J_y[j])) * center_y
+        #plt.subplot(221)
+        #plt.plot(average_J_y[j], average_J_z[j], '-*', label='Jacobian experiment' + str(j))
+        #plt.subplot(222)
+        #plt.plot(average_J_y[j], average_J_x[j], '-*', label='Jacobian experiment' + str(j))
+        plt.subplot(221)
+        plt.plot(average_J_y[j], np.absolute(average_J_z[j] - path_y), '-o')
+        plt.subplot(222)
+        plt.plot(average_J_y[j], np.absolute(average_J_x[j] - path_x), '-o')
+
+    plt.subplot(221)
+    plt.gca().set_title('Error X Axis')
+    plt.ylabel('Jacobian')
+    plt.subplot(222)
+    plt.gca().set_title('Error Y Axis')
+    plt.subplot(223)
+    plt.ylabel('P. Field')
+
+    for j in range(len(average_P_x)):
+        center_x = (np.mean(calibration_data_x_point_4_p[j]) / 2 - np.mean(calibration_data_x_point_2_p[j]) / 2) + \
+                   np.max([np.mean(calibration_data_x_point_4_p[j]), np.mean(calibration_data_x_point_2_p[j])]) + 5
+        center_y = (np.mean(calibration_data_z_point_2_p[j]) / 2 - np.mean(calibration_data_z_point_1_p[j]) / 2) + \
+                   np.min([np.mean(calibration_data_z_point_2_p[j]), np.mean(calibration_data_z_point_1_p[j])])
+        print(center_x, center_y)
+        path_x = np.ones(len(average_P_y[j])) * center_x
+        path_y = np.ones(len(average_P_y[j])) * center_y
+        #plt.subplot(221)
+        #plt.plot(average_P_y[j], average_P_z[j], '-*', label='P. Field experiment' + str(j))
+        #plt.subplot(222)
+        #plt.plot(average_P_y[j], average_P_x[j], '-*', label='P. Field experiment' + str(j))
+        plt.subplot(223)
+        plt.plot(average_P_y[j], np.absolute(average_P_z[j] - path_y), '-o')
+        plt.subplot(224)
+        plt.plot(average_P_y[j], np.absolute(average_P_x[j] - path_x), '-o')
+
+    plt.figure(4)
+    for j in range(len(list_target_x_jacobian)):
+        center_point_x_j = np.ones(len(average_J_y[j])) * 150
+        center_point_y_j = np.ones(len(average_J_y[j])) * 150
+
+        plt.subplot(221)
+        plt.plot(average_J_y[j], np.abs(list_target_x_jacobian[j]-center_point_x_j))
+        plt.subplot(222)
+        plt.plot(average_J_y[j], np.abs(list_target_y_jacobian[j] - center_point_y_j))
+
+    for j in range(len(list_target_y_potential)):
+        center_point_x_j = np.ones(len(average_P_y[j])) * 150
+        center_point_y_j = np.ones(len(average_P_y[j])) * 150
+
+        plt.subplot(223)
+        plt.plot(average_P_y[j], np.abs(list_target_x_potential[j]-center_point_x_j))
+        plt.subplot(224)
+        plt.plot(average_P_y[j], np.abs(list_target_y_potential[j] - center_point_y_j))
+
+    plt.subplot(221)
+    plt.gca().set_title('Error X Axis')
+    plt.ylabel('Jacobian')
+    plt.subplot(222)
+    plt.gca().set_title('Error Y Axis')
+    plt.subplot(223)
+    plt.ylabel('P. Field')
+
+
+
 def canalyze_centering_img(dir_folder):
 
     list_folders = os.listdir(dir_folder)
@@ -814,13 +1096,14 @@ def canalyze_centering_img(dir_folder):
         list_target_x_potential.append(data['filtered x'].tolist())
         list_target_y_potential .append(data['filtered y'].tolist())
 
+    color_list = ['']
     plt.figure()
 
     for j in range(len(list_target_x_jacobian)):
         plt.subplot(231)
         plt.plot(list_target_x_jacobian[j],
                  list_target_y_jacobian[j],
-                 '-*', label='Jacobian experiment ' + str(j))
+                 marker='-*', color=color_list[j], label='Jacobian experiment ' + str(j))
         plt.legend(loc='best')
         center_target = np.ones(len(list_target_x_jacobian[j])) * 150
         plt.plot(150, 150, 'rX')
@@ -847,12 +1130,13 @@ def canalyze_centering_img(dir_folder):
         plt.subplot(236)
         plt.plot(list_target_y_potential[j] - center_target, marker='None')
 
+
 if __name__ == '__main__':
     # plot 3_D data
     #directory_2 = os.getcwd() + '/results/n_control/straight_line/'
     #analyze_results(directory)
     #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     #plot_3D_data(directory_1)
-    directory = os.getcwd() + '/to_analyze/task_1/ic_2/'
-    canalyze_centering_img(directory)
+    directory = os.getcwd() + '/to_analyze/task_2/path_1/'
+    analyze_navigation_task(directory)
     plt.show()
