@@ -5,7 +5,30 @@ import numpy as np
 import glob
 import time
 import data_managament as dm
+import scipy.stats as stats
+from scipy.stats import kruskal
 
+
+def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
+
+    result = stats.ttest_ind(a=parameter_data_1,
+                             b=parameter_data_2,
+                             equal_var=False)
+    print('T-test result')
+    print(result)
+
+    # compare samples
+    stat, p = kruskal(parameter_data_1,
+                      parameter_data_2)
+    print('Statistics=%.9f, p=%.9f' % (stat, p))
+    # interpret
+    print('otra vez')
+    print(stat, p)
+    alpha = 0.05
+    if p > alpha:
+        print('Same distributions (fail to reject H0)')
+    else:
+        print('Different distributions (reject H0)')
 
 def analyze_data_single_experiment(file_directory):
     json_file_dir = file_directory + 'calibration_data.json'
