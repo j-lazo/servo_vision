@@ -9,6 +9,17 @@ import scipy.stats as stats
 from scipy.stats import kruskal
 
 
+def smooth(a, WSZ=5):
+    # a: NumPy 1-D array containing the data to be smoothed
+    # WSZ: smoothing window size needs, which must be odd number,
+    # as in the original MATLAB implementation
+    out0 = np.convolve(a, np.ones(WSZ, dtype=int), 'valid')/WSZ
+    r = np.arange(1, WSZ-1, 2)
+    start = np.cumsum(a[:WSZ-1])[::2]/r
+    stop = (np.cumsum(a[:-WSZ:-1])[::2]/r)[::-1]
+    return np.concatenate((start, out0, stop))
+
+
 def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
 
     result = stats.ttest_ind(a=parameter_data_1,
@@ -1092,8 +1103,7 @@ def analyze_navigation_task(dir_folder):
     plt.ylabel('P. Field')
 
 
-
-def canalyze_centering_img(dir_folder):
+def analyze_centering_img(dir_folder):
 
     list_folders = os.listdir(dir_folder)
     jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
@@ -1154,6 +1164,108 @@ def canalyze_centering_img(dir_folder):
         plt.plot(list_target_y_potential[j] - center_target, marker='None')
 
 
+def analyze_smoothness(dir_folder):
+
+    list_folders = os.listdir(dir_folder)
+    jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
+    potential_field = [folder for folder in list_folders if "potential_field" in folder]
+
+    list_sensor_1_x_jacobian = []
+    list_sensor_1_y_jacobian = []
+    list_sensor_1_z_jacobian = []
+
+    list_sensor_2_x_jacobian = []
+    list_sensor_2_y_jacobian = []
+    list_sensor_2_z_jacobian = []
+
+    list_sensor_3_x_jacobian = []
+    list_sensor_3_y_jacobian = []
+    list_sensor_3_z_jacobian = []
+
+    list_sensor_1_x_potential = []
+    list_sensor_1_y_potential = []
+    list_sensor_1_z_potential = []
+
+    list_sensor_2_x_potential = []
+    list_sensor_2_y_potential = []
+    list_sensor_2_z_potential = []
+
+    list_sensor_3_x_potential = []
+    list_sensor_3_y_potential = []
+    list_sensor_3_z_potential = []
+
+    average_P_x = []
+    average_P_y = []
+    average_P_z = []
+
+    average_J_x = []
+    average_J_y = []
+    average_J_z = []
+
+
+    for j, folder in enumerate(potential_field):
+        data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+
+        list_sensor_1_x_potential.append(data['sensor 1 x'].tolist())
+        list_sensor_1_y_potential .append(data['sensor 1 y'].tolist())
+        list_sensor_1_z_potential.append(data['sensor 1 z'].tolist())
+
+        list_sensor_2_x_potential.append(data['sensor 2 x'].tolist())
+        list_sensor_2_y_potential.append(data['sensor 2 y'].tolist())
+        list_sensor_2_z_potential.append(data['sensor 2 z'].tolist())
+
+        list_sensor_3_x_potential.append(data['sensor 3 x'].tolist())
+        list_sensor_3_y_potential.append(data['sensor 3 y'].tolist())
+        list_sensor_3_z_potential.append(data['sensor 3 z'].tolist())
+
+    for j, list in enumerate(list_sensor_1_x_potential):
+
+        average_x = []
+        average_z = []
+        average_y = []
+        for i in range(len(list)):
+            average_x.append((list_sensor_1_x_potential[j][i] + list_sensor_2_x_potential[j][i] + list_sensor_3_x_potential[j][i])/3)
+            average_y.append((list_sensor_1_y_potential[j][i] + list_sensor_2_y_potential[j][i] + list_sensor_3_y_potential[j][i])/3)
+            average_z.append((list_sensor_1_z_potential[j][i] + list_sensor_2_z_potential[j][i] + list_sensor_3_z_potential[j][i])/3)
+
+        average_P_x.append(average_x)
+        average_P_y.append(average_y)
+        average_P_z.append(average_z)
+
+    for j, folder in enumerate(jacobian_results):
+        data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+
+        list_sensor_1_x_jacobian.append(data['sensor 1 x'].tolist())
+        list_sensor_1_y_jacobian.append(data['sensor 1 y'].tolist())
+        list_sensor_1_z_jacobian.append(data['sensor 1 z'].tolist())
+
+        list_sensor_2_x_jacobian.append(data['sensor 2 x'].tolist())
+        list_sensor_2_y_jacobian.append(data['sensor 2 y'].tolist())
+        list_sensor_2_z_jacobian.append(data['sensor 2 z'].tolist())
+
+        list_sensor_3_x_jacobian.append(data['sensor 3 x'].tolist())
+        list_sensor_3_y_jacobian.append(data['sensor 3 y'].tolist())
+        list_sensor_3_z_jacobian.append(data['sensor 3 z'].tolist())
+
+    for j, list in enumerate(list_sensor_1_x_jacobian):
+        average_jx = []
+        average_jz = []
+        average_jy = []
+        for i in range(len(list)):
+            average_jx.append(
+                (list_sensor_1_x_jacobian[j][i] + list_sensor_2_x_jacobian[j][i] + list_sensor_3_x_jacobian[j][i]) / 3)
+            average_jy.append(
+                (list_sensor_1_y_jacobian[j][i] + list_sensor_2_y_jacobian[j][i] + list_sensor_3_y_jacobian[j][i]) / 3)
+            average_jz.append(
+                (list_sensor_1_z_jacobian[j][i] + list_sensor_2_z_jacobian[j][i] + list_sensor_3_z_jacobian[j][i]) / 3)
+
+        average_J_x.append(average_jx)
+        print(j)
+        print(smooth(average_jz))
+        average_J_y.append(average_jy)
+        average_J_z.append(average_jz)
+
+
 if __name__ == '__main__':
     # plot 3_D data
     #directory_2 = os.getcwd() + '/results/n_control/straight_line/'
@@ -1161,5 +1273,5 @@ if __name__ == '__main__':
     #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     #plot_3D_data(directory_1)
     directory = os.getcwd() + '/to_analyze/task_2/path_1/'
-    analyze_navigation_task(directory)
+    analyze_smoothness(directory)
     plt.show()
