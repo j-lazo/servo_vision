@@ -3,10 +3,53 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 import glob
-import time
 import data_managament as dm
 import scipy.stats as stats
 from scipy.stats import kruskal
+from datetime import datetime
+import seaborn as sns
+
+
+def smooth(a, WSZ=5):
+    # a: NumPy 1-D array containing the data to be smoothed
+    # WSZ: smoothing window size needs, which must be odd number,
+    # as in the original MATLAB implementation
+    out0 = np.convolve(a, np.ones(WSZ, dtype=int), 'valid')/WSZ
+    r = np.arange(1, WSZ-1, 2)
+    start = np.cumsum(a[:WSZ-1])[::2]/r
+    stop = (np.cumsum(a[:-WSZ:-1])[::2]/r)[::-1]
+    return np.concatenate((start, out0, stop))
+
+
+def check_nan(array):
+    return [element for element in array if not(np.isnan(element))]
+
+
+def determine_vertex_and_edges(array_points):
+    colors = ['red', 'blue', 'green', 'orange', 'purple', 'olive', 'cyan', 'pink']
+    raw_x = check_nan(array_points["limit_point_x"])
+    raw_y = check_nan(array_points["limit_point_y"])
+    raw_z = check_nan(array_points["limit_point_z"])
+
+    points_x = [[] for _ in range(8)]
+    points_y = [[] for _ in range(8)]
+    points_z = [[] for _ in range(8)]
+
+    for j in range(6):
+        points_x[j] = raw_x[j*6:(j*6)+6]
+        points_y[j] = raw_y[j*6:(j*6)+6]
+
+    plt.subplot(221)
+    for j in range(len(points_x)):
+        print(len(points_x[j]))
+        plt.plot(points_x[j], points_y[j], marker='.', color=colors[j], label='Experiment' + str(j))
+    #plt.plot(np.median(points_x), np.median(points_y), 'o')
+    #plt.subplot(222)
+    #plt.plot(points_x, points_z, '*')
+    #plt.plot(np.median(points_x), np.median(points_z), 'o')
+    #plt.subplot(223)
+    #plt.plot(points_y, points_z, '*')
+    #plt.plot(np.median(points_y), np.median(points_z), 'o')
 
 
 def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
@@ -29,6 +72,7 @@ def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
         print('Same distributions (fail to reject H0)')
     else:
         print('Different distributions (reject H0)')
+
 
 def analyze_data_single_experiment(file_directory):
     json_file_dir = file_directory + 'calibration_data.json'
@@ -106,6 +150,13 @@ def discretise_single_series_vertical(teoretical_series, list_points_series):
 
 
 def build_ground_truth_paths(directory_files, plot=True):
+
+    """
+    A function to build the ground truth trajectories
+    @param directory_files: directory where the experimental data is storaged
+    @param plot:
+    @return:
+    """
 
     list_files = os.listdir(directory_files)
     list_files = sorted([file for file in list_files if file.endswith('.csv')])
@@ -1092,8 +1143,7 @@ def analyze_navigation_task(dir_folder):
     plt.ylabel('P. Field')
 
 
-
-def canalyze_centering_img(dir_folder):
+def analyze_centering_img(dir_folder):
 
     list_folders = os.listdir(dir_folder)
     jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
@@ -1154,12 +1204,328 @@ def canalyze_centering_img(dir_folder):
         plt.plot(list_target_y_potential[j] - center_target, marker='None')
 
 
+def extract_data(dir_folder, index_string_subfolder, atribute=''):
+
+    list_folders = os.listdir(dir_folder)
+    list_results = [folder for folder in list_folders if index_string_subfolder in folder]
+    extracted_data = [[] for _ in range(len(list_results))]
+
+    if atribute == 'center_points':
+        for j, folder in enumerate(list_results):
+            data = get_center_point_sensors(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+            extracted_data[j].append(data)
+
+    else:
+        for j, folder in enumerate(list_results):
+            print(folder)
+            data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+            extracted_data[j].append(data[atribute].tolist())
+
+    return extracted_data
+
+
+def dimensionless_jerk(movement, fs):
+    """
+    Calculates the smoothness metric for the given speed profile using the dimensionless jerk
+    metric.
+
+    Parameters
+    ----------
+    movement : np.array
+               The array containing the movement speed profile.
+    fs       : float
+               The sampling frequency of the data.
+    Returns
+    -------
+    dl       : float
+               The dimensionless jerk estimate of the given movement's smoothness.
+    Notes
+    -----
+
+    Examples
+    --------
+    #>>> t = np.arange(-1, 1, 0.01)
+    #>>> move = np.exp(-5*pow(t, 2))
+    #>>> dl = dimensionless_jerk(move, fs=100.)
+    #>>> '%.5f' % dl
+    '-335.74684'
+    """
+    # first enforce data into an numpy array.
+    movement = np.array(movement)
+
+    # calculate the scale factor and jerk.
+    movement_peak = np.amax(abs(movement))
+    dt = 1. / fs
+    movement_dur = len(movement) * dt
+    jerk = np.diff(movement, 2) / pow(dt, 2)
+    scale = pow(movement_dur, 3) / pow(movement_peak, 2)
+
+    # estimate dj
+    return - scale * sum(pow(jerk, 2)) * dt
+
+
+def log_dimensionless_jerk(movement, fs):
+    """
+    Calculates the smoothness metric for the given speed profile using the log dimensionless jerk
+    metric.
+
+    Parameters
+    ----------
+    movement : np.array
+               The array containing the movement speed profile.
+    fs       : float
+               The sampling frequency of the data.
+    Returns
+    -------
+    ldl      : float
+               The log dimensionless jerk estimate of the given movement's smoothness.
+    Notes
+    -----
+
+    Examples
+    --------
+    #>>> t = np.arange(-1, 1, 0.01)
+    #>>> move = np.exp(-5*pow(t, 2))
+    #>>> ldl = log_dimensionless_jerk(move, fs=100.)
+    #>>> '%.5f' % ldl
+    '-5.81636'
+    """
+    return -np.log(abs(dimensionless_jerk(movement, fs)))
+
+
+def spectral_arclength(movement, fs, padlevel=4, fc=10.0, amp_th=0.05):
+    """
+    Calcualtes the smoothness of the given speed profile using the modified spectral
+    arc length metric.
+    Parameters
+    ----------
+    movement : np.array
+               The array containing the movement speed profile.
+    fs       : float
+               The sampling frequency of the data.
+    padlevel : integer, optional
+               Indicates the amount of zero padding to be done to the movement
+               data for estimating the spectral arc length. [default = 4]
+    fc       : float, optional
+               The max. cut off frequency for calculating the spectral arc
+               length metric. [default = 10.]
+    amp_th   : float, optional
+               The amplitude threshold to used for determing the cut off
+               frequency upto which the spectral arc length is to be estimated.
+               [default = 0.05]
+    Returns
+    -------
+    sal      : float
+               The spectral arc length estimate of the given movement's
+               smoothness.
+    (f, Mf)  : tuple of two np.arrays
+               This is the frequency(f) and the magntiude spectrum(Mf) of the
+               given movement data. This spectral is from 0. to fs/2.
+    (f_sel, Mf_sel) : tuple of two np.arrays
+                      This is the portion of the spectrum that is selected for
+                      calculating the spectral arc length.
+    Notes
+    -----
+    This is the modfieid spectral arc length metric, which has been tested only
+    for discrete movements.
+    It is suitable for movements that are a few seconds long, but for long
+    movements it might be slow and results might not make sense (like any other
+    smoothness metric).
+    Examples
+    --------
+    >>> t = np.arange(-1, 1, 0.01)
+    >>> move = np.exp(-5*pow(t, 2))
+    >>> sal, _, _ = spectral_arclength(move, fs=100.)
+    >>> '%.5f' % sal
+    '-1.41403'
+    """
+    # Number of zeros to be padded.
+    nfft = int(pow(2, np.ceil(np.log2(len(movement))) + padlevel))
+
+    # Frequency
+    f = np.arange(0, fs, fs / nfft)
+    # Normalized magnitude spectrum
+    Mf = abs(np.fft.fft(movement, nfft))
+    Mf = Mf / np.amax(Mf)
+
+    # Indices to choose only the spectrum within the given cut off frequency Fc.
+    # NOTE: This is a low pass filtering operation to get rid of high frequency
+    # noise from affecting the next step (amplitude threshold based cut off for
+    # arc length calculation).
+    fc_inx = ((f <= fc) * 1).nonzero()
+    f_sel = f[fc_inx]
+    Mf_sel = Mf[fc_inx]
+
+    # Choose the amplitude threshold based cut off frequency.
+    # Index of the last point on the magnitude spectrum that is greater than
+    # or equal to the amplitude threshold.
+    inx = ((Mf_sel >= amp_th) * 1).nonzero()[0]
+    fc_inx = range(inx[0], inx[-1] + 1)
+    f_sel = f_sel[fc_inx]
+    Mf_sel = Mf_sel[fc_inx]
+
+    # Calculate arc length
+    new_sal = -sum(np.sqrt(pow(np.diff(f_sel) / (f_sel[-1] - f_sel[0]), 2) + pow(np.diff(Mf_sel), 2)))
+    return new_sal, (f, Mf), (f_sel, Mf_sel)
+
+
+def get_center_point_sensors(dir_file):
+    data = pd.read_csv(dir_file)
+
+    points_x = []
+    points_y = []
+    points_z = []
+
+    sensor_1_x = []
+    sensor_1_y = []
+    sensor_1_z = []
+
+    sensor_2_x = []
+    sensor_2_y = []
+    sensor_2_z = []
+
+    sensor_3_x = []
+    sensor_3_y = []
+    sensor_3_z = []
+
+    sensor_1_x.append(data['sensor 1 x'].tolist())
+    sensor_1_y.append(data['sensor 1 y'].tolist())
+    sensor_1_z.append(data['sensor 1 z'].tolist())
+
+    sensor_2_x.append(data['sensor 2 x'].tolist())
+    sensor_2_y.append(data['sensor 2 y'].tolist())
+    sensor_2_z.append(data['sensor 2 z'].tolist())
+
+    sensor_3_x.append(data['sensor 3 x'].tolist())
+    sensor_3_y.append(data['sensor 3 y'].tolist())
+    sensor_3_z.append(data['sensor 3 z'].tolist())
+
+    for j, list in enumerate(sensor_1_x):
+
+        average_x = []
+        average_z = []
+        average_y = []
+
+        for i in range(len(list)):
+            average_x.append((sensor_1_x[j][i] + sensor_2_x[j][i] + sensor_3_x[j][i])/3)
+            average_y.append((sensor_1_y[j][i] + sensor_2_y[j][i] + sensor_3_y[j][i])/3)
+            average_z.append((sensor_1_z[j][i] + sensor_2_z[j][i] + sensor_3_z[j][i])/3)
+
+        points_x.append(average_x)
+        points_y.append(average_y)
+        points_z.append(average_z)
+
+    return points_x, points_y, points_z
+
+
+def get_steps_length(list_time_stamps):
+    list_length_steps = []
+    for k in range(len(list_time_stamps) - 1):
+        initial_time = datetime.strptime(list_time_stamps[k], '%Y-%m-%d %H:%M:%S.%f')
+        end_time = datetime.strptime(list_time_stamps[k + 1], '%Y-%m-%d %H:%M:%S.%f')
+        difference = (end_time - initial_time).total_seconds()
+        list_length_steps.append(difference)
+
+    return list_length_steps
+
+
+def analyze_smoothness(dir_folder):
+    param_to_analyze = 'time'
+    time_stamps_jacobian = extract_data(dir_folder, "jacobian", param_to_analyze)
+    time_stamps_potential_field = extract_data(dir_folder, "potential_field", param_to_analyze)
+
+    param_to_analyze_2 = 'center_points'
+    experiments_jacobian = extract_data(dir_folder, "jacobian", param_to_analyze_2)
+    experiments_potential_field = extract_data(dir_folder, "potential_field", param_to_analyze_2)
+    performances_jacobian = []
+    performances_p_field = []
+    plt.figure()
+    for j, experiment_data in enumerate(experiments_jacobian):
+        center_x = experiment_data[0][0][0]
+        center_y = experiment_data[0][1][0]
+        center_z = experiment_data[0][2][0]
+        plt.subplot(221)
+        plt.plot(center_y, center_x)
+        plt.subplot(222)
+        plt.plot(center_y, center_z)
+        time_steps_jacobian = get_steps_length(time_stamps_jacobian[j][0])
+        fs = 1./(np.median(time_steps_jacobian))
+        performances_jacobian.append(spectral_arclength([center_x, center_y, center_z][1], fs)[0])
+
+    performances_jacobian = check_nan(performances_jacobian)
+
+    for j, experiment_data in enumerate(experiments_potential_field):
+        center_x = experiment_data[0][0][0]
+        center_y = experiment_data[0][1][0]
+        center_z = experiment_data[0][2][0]
+        plt.subplot(223)
+        plt.plot(center_y, center_x)
+        plt.subplot(224)
+        plt.plot(center_y, center_z, label='experiment ' + str(j))
+        time_steps_p_field = get_steps_length(time_stamps_potential_field[j][0])
+        fs = 1./(np.median(time_steps_p_field))
+        performances_p_field.append(spectral_arclength([center_x, center_y, center_z][1], fs)[0])
+        plt.legend(loc='best')
+
+    performances_p_field = check_nan(performances_p_field)
+
+    plt.figure()
+    plt.subplot(121)
+    plt.boxplot(performances_jacobian)
+    plt.subplot(122)
+    plt.boxplot(performances_p_field)
+
+    print(performances_jacobian)
+    print(performances_p_field)
+    print('Jacobian:')
+    print(np.mean(performances_jacobian), np.median(performances_jacobian), np.std(performances_jacobian))
+    print('Potential Field:')
+    print(np.mean(performances_p_field), np.median(performances_p_field), np.std(performances_p_field))
+    calculate_kruskal_p_value(performances_jacobian, performances_p_field)
+
+
+def analyze_time(dir_folder):
+    to_analyze = 'time'
+    experiments_jacobian = extract_data(dir_folder, "jacobian", to_analyze)
+    experiments_potential_field = extract_data(dir_folder, "potential_field", to_analyze)
+
+    performances_jacobian = []
+    performances_p_field = []
+
+    for j, experiment_data in enumerate(experiments_jacobian):
+        print(j)
+        initial_time = datetime.strptime(experiment_data[0][0], '%Y-%m-%d %H:%M:%S.%f')
+        end_time = datetime.strptime(experiment_data[0][-1], '%Y-%m-%d %H:%M:%S.%f')
+        difference = (end_time - initial_time).total_seconds()
+        performances_jacobian.append(difference)
+
+    for j, experiment_data in enumerate(experiments_potential_field):
+        initial_time = datetime.strptime(experiment_data[0][0], '%Y-%m-%d %H:%M:%S.%f')
+        end_time = datetime.strptime(experiment_data[0][-1], '%Y-%m-%d %H:%M:%S.%f')
+        difference = (end_time - initial_time).total_seconds()
+        performances_p_field.append(difference)
+
+    plt.figure()
+    plt.subplot(121)
+    plt.boxplot(performances_jacobian)
+    plt.subplot(122)
+    plt.boxplot(performances_p_field)
+
+    print('Jacobian:')
+    print(np.mean(performances_jacobian), np.median(performances_jacobian), np.std(performances_jacobian))
+
+    print('Potential Field:')
+    print(np.mean(performances_p_field), np.median(performances_p_field), np.std(performances_p_field))
+    calculate_kruskal_p_value(performances_jacobian, performances_p_field)
+
+
 if __name__ == '__main__':
     # plot 3_D data
     #directory_2 = os.getcwd() + '/results/n_control/straight_line/'
     #analyze_results(directory)
     #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     #plot_3D_data(directory_1)
-    directory = os.getcwd() + '/to_analyze/task_2/path_1/'
-    analyze_navigation_task(directory)
+    directory = os.getcwd() + '/to_analyze/task_2/path_2/'
+    analyze_smoothness(directory)
+    #analyze_time(directory)
     plt.show()
