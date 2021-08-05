@@ -138,6 +138,7 @@ def plot_trajectory(set_of_points, trajectory_type):
 
 
 if __name__ == '__main__':
+    print('notihgin')
     set_of_points = [(1, 1, 1),
                      (1, 40, 1),
                      (1, 1, 40),
