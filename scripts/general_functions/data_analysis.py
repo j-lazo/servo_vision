@@ -3,11 +3,12 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import numpy as np
 import glob
-import time
 import data_managament as dm
 import scipy.stats as stats
 from scipy.stats import kruskal
 from datetime import datetime
+import seaborn as sns
+
 
 def smooth(a, WSZ=5):
     # a: NumPy 1-D array containing the data to be smoothed
@@ -71,6 +72,7 @@ def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
         print('Same distributions (fail to reject H0)')
     else:
         print('Different distributions (reject H0)')
+
 
 def analyze_data_single_experiment(file_directory):
     json_file_dir = file_directory + 'calibration_data.json'
@@ -148,6 +150,13 @@ def discretise_single_series_vertical(teoretical_series, list_points_series):
 
 
 def build_ground_truth_paths(directory_files, plot=True):
+
+    """
+    A function to build the ground truth trajectories
+    @param directory_files: directory where the experimental data is storaged
+    @param plot:
+    @return:
+    """
 
     list_files = os.listdir(directory_files)
     list_files = sorted([file for file in list_files if file.endswith('.csv')])
@@ -1208,6 +1217,7 @@ def extract_data(dir_folder, index_string_subfolder, atribute=''):
 
     else:
         for j, folder in enumerate(list_results):
+            print(folder)
             data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
             extracted_data[j].append(data[atribute].tolist())
 
@@ -1359,7 +1369,6 @@ def spectral_arclength(movement, fs, padlevel=4, fc=10.0, amp_th=0.05):
     return new_sal, (f, Mf), (f_sel, Mf_sel)
 
 
-
 def get_center_point_sensors(dir_file):
     data = pd.read_csv(dir_file)
 
@@ -1452,10 +1461,11 @@ def analyze_smoothness(dir_folder):
         plt.subplot(223)
         plt.plot(center_y, center_x)
         plt.subplot(224)
-        plt.plot(center_y, center_z)
+        plt.plot(center_y, center_z, label='experiment ' + str(j))
         time_steps_p_field = get_steps_length(time_stamps_potential_field[j][0])
         fs = 1./(np.median(time_steps_p_field))
         performances_p_field.append(spectral_arclength([center_x, center_y, center_z][1], fs)[0])
+        plt.legend(loc='best')
 
     performances_p_field = check_nan(performances_p_field)
 
@@ -1483,6 +1493,7 @@ def analyze_time(dir_folder):
     performances_p_field = []
 
     for j, experiment_data in enumerate(experiments_jacobian):
+        print(j)
         initial_time = datetime.strptime(experiment_data[0][0], '%Y-%m-%d %H:%M:%S.%f')
         end_time = datetime.strptime(experiment_data[0][-1], '%Y-%m-%d %H:%M:%S.%f')
         difference = (end_time - initial_time).total_seconds()
@@ -1494,12 +1505,19 @@ def analyze_time(dir_folder):
         difference = (end_time - initial_time).total_seconds()
         performances_p_field.append(difference)
 
+    plt.figure()
+    plt.subplot(121)
+    plt.boxplot(performances_jacobian)
+    plt.subplot(122)
+    plt.boxplot(performances_p_field)
+
     print('Jacobian:')
     print(np.mean(performances_jacobian), np.median(performances_jacobian), np.std(performances_jacobian))
 
     print('Potential Field:')
     print(np.mean(performances_p_field), np.median(performances_p_field), np.std(performances_p_field))
     calculate_kruskal_p_value(performances_jacobian, performances_p_field)
+
 
 if __name__ == '__main__':
     # plot 3_D data
@@ -1508,6 +1526,6 @@ if __name__ == '__main__':
     #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     #plot_3D_data(directory_1)
     directory = os.getcwd() + '/to_analyze/task_2/path_2/'
-    #analyze_smoothness(directory)
     analyze_smoothness(directory)
+    #analyze_time(directory)
     plt.show()
