@@ -5,9 +5,84 @@ import numpy as np
 import glob
 import time
 import data_managament as dm
-from datetime import datetime
 import scipy.stats as stats
 from scipy.stats import kruskal
+from datetime import datetime
+from mpl_toolkits import mplot3d
+
+
+class GroundTruth:
+    def __init__(self, x, x_shift=0, y_shift=0, length=40, radius=60, angle=15, origin=0):
+        if x[-1] > x[0]:
+            self.__index1 = (next(i for i, v in enumerate(x) if v > x[0] + length))
+            self.__index2 = (
+                next(i for i, v in enumerate(x) if v > (x[0] + length + radius * np.sin(2 * np.pi / 360 * angle))))
+        elif x[-1] < x[0]:
+            self.__index1 = (next(i for i, v in enumerate(x) if v < x[0] - length))
+            self.__index2 = (
+                next(i for i, v in enumerate(x) if v < (x[0] - length - radius * np.sin(2 * np.pi / 360 * angle))))
+        self.length = length
+        self.radius = radius
+        self.angle = angle
+        self.x = x - x_shift
+        self.x_shift = x_shift
+        self.y_shift = y_shift
+        self.x1 = np.array([])
+        self.x2 = np.array([])
+        self.x3 = np.array([])
+        self.y = np.array([])
+        self.y1 = np.array([])
+        self.y2 = np.array([])
+        self.y3 = np.array([])
+
+    def plot(self):
+        # plt.figure(figsize=(24, 2))
+        plt.plot(self.x1, self.y1, 'r')
+        plt.plot(self.x2, self.y2, 'g')
+        plt.plot(self.x3, self.y3, 'b')
+
+    def x_init(self):
+        self.x1 = self.x[0:self.__index1]
+        self.x2 = self.x[self.__index1:self.__index2]
+        self.x3 = self.x[self.__index2:]
+
+    def y_init(self, y_flip=False, x_flip=False):
+        if not x_flip and not y_flip:
+            self.y1 = self.y_shift * np.ones(len(self.x1))  # doesn't not change with x shift
+            self.y2 = np.sqrt(self.radius ** 2 - (self.x2 - self.x1[-1]) ** 2) + (-self.radius + self.y_shift)
+            self.y3 = -np.tan(2 * np.pi / 360 * 15) * (self.x3 - self.x2[-1]) + self.y2[-1]
+        elif x_flip and not y_flip:
+            self.y1 = self.y_shift * np.ones(len(self.x1))  # doesn't not change with x shift
+            self.y2 = np.sqrt(self.radius ** 2 - (self.x2 - self.x1[-1]) ** 2) + (-self.radius + self.y_shift)
+            self.y3 = np.tan(2 * np.pi / 360 * 15) * (self.x3 - self.x2[-1]) + self.y2[-1]
+
+        elif not x_flip and y_flip:
+            self.y1 = -(self.y_shift * np.ones(len(self.x1))) # doesn't not change with x shift
+            self.y2 = -(np.sqrt(self.radius ** 2 - (self.x2 - self.x1[-1]) ** 2) + (-self.radius + self.y_shift))
+            self.y3 = -(-np.tan(2 * np.pi / 360 * 15) * (self.x3 - self.x2[-1]) + self.y2[-1])
+
+        elif x_flip and y_flip:
+            self.y1 = -(self.y_shift * np.ones(len(self.x1)))  # doesn't not change with x shift
+            self.y2 = -(np.sqrt(self.radius ** 2 - (self.x2 - self.x1[-1]) ** 2) + (-self.radius + self.y_shift))
+            self.y3 = -(np.tan(2 * np.pi / 360 * 15) * (self.x3 - self.x2[-1]) - self.y2[-1])
+
+
+
+        self.y = np.concatenate((self.y1, self.y2, self.y3), axis=None)
+
+    def shift_x(self, dx):
+        self.x = self.x - dx
+        self.x1 = self.x[0:self.__index1]
+        self.x2 = self.x[self.__index1:self.__index2]
+        self.x3 = self.x[self.__index2:]
+        return
+
+    def shift_y(self, dy):
+        self.y = self.y + dy
+        return
+
+    def diff(self, y):
+        return np.abs(np.subtract(y, self.y)).sum()/len(y)
 
 
 def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
@@ -20,8 +95,10 @@ def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
     # compare samples
     stat, p = kruskal(parameter_data_1,
                       parameter_data_2)
-    print('Statistics= %.9f, p= %.9f' % (stat, p))
+    print('Statistics=%.9f, p=%.9f' % (stat, p))
     # interpret
+    print('otra vez')
+    print(stat, p)
     alpha = 0.05
     if p > alpha:
         print('Same distributions (fail to reject H0)')
@@ -230,7 +307,7 @@ def plot_3D_trajectory(directory_results, directory_file):
     plt.show()
 
 
-def calculate_error_list(ground_truth, measured):
+def calcualte_error_list(ground_truth, measured):
     ground_truth = list(ground_truth)
     discreet_list = [[] for _ in range(len(ground_truth))]
 
@@ -250,7 +327,7 @@ def calculate_error_list(ground_truth, measured):
     return abs_error_list
 
 
-def calculate_error_dependant_list(ground_truth, measured, auxiliar_list):
+def calcualte_error_dependant_list(ground_truth, measured, auxiliar_list):
     ground_truth = list(ground_truth)
     discreet_list = [[] for _ in range(len(ground_truth))]
 
@@ -371,7 +448,7 @@ def compare_gt_and_results(directory_files, results_directory, plot=True):
         # plt.title('Error Y axis')
         for j in range(len(list_all_z)):
             line_temp = list_all_y[j][::-1]
-            plot_list = calculate_error_list(discrete_series_x, line_temp)
+            plot_list = calcualte_error_list(discrete_series_x, line_temp)
             plt.plot(plot_list, 'o-', label='trajectory ' + str(j))
             plt.ylabel('Error Y (mm)')
             plt.legend(loc='best')
@@ -382,7 +459,7 @@ def compare_gt_and_results(directory_files, results_directory, plot=True):
         for j in range(len(list_all_z)):
             line_temp = list_all_x[j]  # [::-1]
             # plot_list = [np.abs(x - line_z[0]) for x in line_temp]
-            plot_list = calculate_error_dependant_list(mean_z, line_temp, discrete_series_x)
+            plot_list = calcualte_error_dependant_list(mean_z, line_temp, discrete_series_x)
             plt.plot(discrete_series_x, plot_list, 'o-', label='trajectory ' + str(j))
             plt.ylabel('Absolute error X (mm)')
             plt.legend(loc='best')
@@ -394,7 +471,7 @@ def compare_gt_and_results(directory_files, results_directory, plot=True):
         for j in range(len(list_all_z)):
             line_temp = list_all_z[j]  # [::-1]
             # plot_list = [np.abs(x - line_y[0]) for x in line_temp]
-            plot_list = calculate_error_dependant_list(mean_y, line_temp, discrete_series_x)
+            plot_list = calcualte_error_dependant_list(mean_y, line_temp, discrete_series_x)
             plt.plot(discrete_series_x, plot_list, 'o-', label='trajectory ' + str(j))
             plt.ylabel('Absolute error Z (mm)')
             plt.legend(loc='best')
@@ -463,18 +540,6 @@ def calculate_centroid_triangle(edge_1_y, edge_1_z, edge_1_x,
 def calculate_average(list_points):
     data = np.array(list_points)
     return np.average(data, axis=0)
-
-
-def calculate_list_average(input_list):
-    return sum(input_list) / len(input_list)
-
-
-def calculate_list_variance(input_list):
-    return np.array(input_list).var()
-
-
-def calculate_list_std(input_list):
-    return np.array(input_list).std()
 
 
 def plot_3D_data(directory_results):
@@ -603,6 +668,7 @@ def analyze_centering_task(dir_folder):
     list_folders = os.listdir(dir_folder)
     jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
     potential_field = [folder for folder in list_folders if "potential_field" in folder]
+
 
     list_sensor_1_x_jacobian = []
     list_sensor_1_y_jacobian = []
@@ -748,6 +814,7 @@ def analyze_centering_task(dir_folder):
         list_sensor_3_y_jacobian.append(data['sensor 3 y'].tolist())
         list_sensor_3_z_jacobian.append(data['sensor 3 z'].tolist())
 
+
     for j, list in enumerate(list_sensor_1_x_jacobian):
         average_jx = []
         average_jz = []
@@ -816,15 +883,6 @@ def analyze_centering_task(dir_folder):
     plt.legend(loc='best')
 
 
-def mapping_function(data_list):
-    list_target = 0
-    list_zero = data_list[0]
-    data_list = data_list - np.ones(len(data_list)) * list_zero
-    for i in range(len(data_list)):
-        data_list[i] = data_list[i] * 1 / (list_target - list_zero)
-    return data_list
-
-
 def mapping_time(list_time):
     list_new_time = []
     for time in list_time:
@@ -835,8 +893,423 @@ def mapping_time(list_time):
         for i in range(len(buffer_time)):
             new_time.append((buffer_time[i] - buffer_time[0]).total_seconds())
         list_new_time.append(new_time)
-    print(len(list_new_time[0]))
     return list_new_time
+
+
+def find_finish_time(lists_time_series):
+    finish_time = []
+    for list_time in lists_time_series:
+        finish_time.append(list_time[-1])
+    return finish_time
+
+
+def calculate_stop_times(lists_stepper_state, offset=500):
+    stop_frequency = []
+    for list_state in lists_stepper_state:
+        print(list_state)
+        counts = np.bincount((np.array(list_state)+offset).astype(int))
+        stop_frequency.append(len([x for x in counts if x > 5]))
+    print('NUMBERS:', stop_frequency)
+    return stop_frequency
+
+
+def calculate_list_stat(data):
+    average = sum(data)*1.00/len(data)
+    std = np.array(data).std()
+    return average, std
+
+
+
+
+
+def analyze_navigation_task(dir_folder):
+    list_folders = os.listdir(dir_folder)
+    jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
+    potential_field = [folder for folder in list_folders if "potential_field" in folder]
+
+    list_time_jacobian = []
+    list_time_potential = []
+
+    list_sensor_1_x_jacobian = []
+    list_sensor_1_y_jacobian = []
+    list_sensor_1_z_jacobian = []
+
+    list_sensor_2_x_jacobian = []
+    list_sensor_2_y_jacobian = []
+    list_sensor_2_z_jacobian = []
+
+    list_sensor_3_x_jacobian = []
+    list_sensor_3_y_jacobian = []
+    list_sensor_3_z_jacobian = []
+
+    average_J_x = []
+    average_J_y = []
+    average_J_z = []
+
+    list_sensor_1_x_potential = []
+    list_sensor_1_y_potential = []
+    list_sensor_1_z_potential = []
+
+    list_sensor_2_x_potential = []
+    list_sensor_2_y_potential = []
+    list_sensor_2_z_potential = []
+
+    list_sensor_3_x_potential = []
+    list_sensor_3_y_potential = []
+    list_sensor_3_z_potential = []
+
+    average_P_x = []
+    average_P_y = []
+    average_P_z = []
+
+    calibration_data_x_point_1_j = []
+    calibration_data_y_point_1_j = []
+    calibration_data_z_point_1_j = []
+
+    calibration_data_x_point_2_j = []
+    calibration_data_y_point_2_j = []
+    calibration_data_z_point_2_j = []
+
+    calibration_data_x_point_3_j = []
+    calibration_data_y_point_3_j = []
+    calibration_data_z_point_3_j = []
+
+    calibration_data_x_point_4_j = []
+    calibration_data_y_point_4_j = []
+    calibration_data_z_point_4_j = []
+
+    calibration_data_x_point_1_p = []
+    calibration_data_y_point_1_p = []
+    calibration_data_z_point_1_p = []
+
+    calibration_data_x_point_2_p = []
+    calibration_data_y_point_2_p = []
+    calibration_data_z_point_2_p = []
+
+    calibration_data_x_point_3_p = []
+    calibration_data_y_point_3_p = []
+    calibration_data_z_point_3_p = []
+
+    calibration_data_x_point_4_p = []
+    calibration_data_y_point_4_p = []
+    calibration_data_z_point_4_p = []
+
+    list_target_x_jacobian = []
+    list_target_y_jacobian = []
+    list_target_x_potential = []
+    list_target_y_potential = []
+
+    for j, folder in enumerate(potential_field):
+        j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
+        calibration_points = dm.read_data_json(os.path.join(dir_folder, folder, j_son_file))
+
+        calibration_data_x_point_1_p.append(calibration_points["limit_point_x"][:6])
+        calibration_data_x_point_2_p.append(calibration_points["limit_point_x"][13:17])
+        calibration_data_x_point_3_p.append(calibration_points["limit_point_x"][25:30])
+        calibration_data_x_point_4_p.append(calibration_points["limit_point_x"][38:40])
+
+        calibration_data_y_point_1_p.append(calibration_points["limit_point_y"][:6])
+        calibration_data_y_point_2_p.append(calibration_points["limit_point_y"][13:18])
+        calibration_data_y_point_3_p.append(calibration_points["limit_point_y"][25:30])
+        calibration_data_y_point_4_p.append(calibration_points["limit_point_y"][38:40])
+
+        calibration_data_z_point_1_p.append(calibration_points["limit_point_z"][:6])
+        calibration_data_z_point_2_p.append(calibration_points["limit_point_z"][13:18])
+        calibration_data_z_point_3_p.append(calibration_points["limit_point_z"][25:30])
+        calibration_data_z_point_4_p.append(calibration_points["limit_point_z"][38:40])
+
+        data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+
+        list_target_x_potential.append(data['filtered x'].tolist())
+        list_target_y_potential.append(data['filtered y'].tolist())
+
+        list_sensor_1_x_potential.append(data['sensor 1 x'].tolist())
+        list_sensor_1_y_potential.append(data['sensor 1 y'].tolist())
+        list_sensor_1_z_potential.append(data['sensor 1 z'].tolist())
+
+        list_sensor_2_x_potential.append(data['sensor 2 x'].tolist())
+        list_sensor_2_y_potential.append(data['sensor 2 y'].tolist())
+        list_sensor_2_z_potential.append(data['sensor 2 z'].tolist())
+
+        list_sensor_3_x_potential.append(data['sensor 3 x'].tolist())
+        list_sensor_3_y_potential.append(data['sensor 3 y'].tolist())
+        list_sensor_3_z_potential.append(data['sensor 3 z'].tolist())
+
+        list_time_potential.append(data['time'].tolist())
+
+    for j, list in enumerate(list_sensor_1_x_potential):
+        average_x = []
+        average_z = []
+        average_y = []
+        for i in range(len(list)):
+            average_x.append((list_sensor_1_x_potential[j][i] + list_sensor_2_x_potential[j][i] +
+                              list_sensor_3_x_potential[j][i]) / 3)
+            average_y.append((list_sensor_1_y_potential[j][i] + list_sensor_2_y_potential[j][i] +
+                              list_sensor_3_y_potential[j][i]) / 3)
+            average_z.append((list_sensor_1_z_potential[j][i] + list_sensor_2_z_potential[j][i] +
+                              list_sensor_3_z_potential[j][i]) / 3)
+
+        average_P_x.append(average_x)
+        average_P_y.append(average_y)
+        average_P_z.append(average_z)
+
+    for j, folder in enumerate(jacobian_results):
+        j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
+        calibration_points = dm.read_data_json(os.path.join(dir_folder, folder, j_son_file))
+
+        calibration_data_x_point_1_j.append(calibration_points["limit_point_x"][:6])
+        calibration_data_x_point_2_j.append(calibration_points["limit_point_x"][13:18])
+        calibration_data_x_point_3_j.append(calibration_points["limit_point_x"][25:30])
+        calibration_data_x_point_4_j.append(calibration_points["limit_point_x"][38:40])
+
+        calibration_data_y_point_1_j.append(calibration_points["limit_point_y"][:6])
+        calibration_data_y_point_2_j.append(calibration_points["limit_point_y"][13:18])
+        calibration_data_y_point_3_j.append(calibration_points["limit_point_y"][25:30])
+        calibration_data_y_point_4_j.append(calibration_points["limit_point_y"][38:40])
+
+        calibration_data_z_point_1_j.append(calibration_points["limit_point_z"][:6])
+        calibration_data_z_point_2_j.append(calibration_points["limit_point_z"][13:18])
+        calibration_data_z_point_3_j.append(calibration_points["limit_point_z"][25:30])
+        calibration_data_z_point_4_j.append(calibration_points["limit_point_z"][38:40])
+
+        data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+
+        list_target_x_jacobian.append(data['filtered x'].tolist())
+        list_target_y_jacobian.append(data['filtered y'].tolist())
+
+        list_sensor_1_x_jacobian.append(data['sensor 1 x'].tolist())
+        list_sensor_1_y_jacobian.append(data['sensor 1 y'].tolist())
+        list_sensor_1_z_jacobian.append(data['sensor 1 z'].tolist())
+
+        list_sensor_2_x_jacobian.append(data['sensor 2 x'].tolist())
+        list_sensor_2_y_jacobian.append(data['sensor 2 y'].tolist())
+        list_sensor_2_z_jacobian.append(data['sensor 2 z'].tolist())
+
+        list_sensor_3_x_jacobian.append(data['sensor 3 x'].tolist())
+        list_sensor_3_y_jacobian.append(data['sensor 3 y'].tolist())
+        list_sensor_3_z_jacobian.append(data['sensor 3 z'].tolist())
+
+        list_time_jacobian.append(data['time'].tolist())
+
+    for j, list in enumerate(list_sensor_1_x_jacobian):
+        average_jx = []
+        average_jz = []
+        average_jy = []
+        for i in range(len(list)):
+            average_jx.append(
+                (list_sensor_1_x_jacobian[j][i] + list_sensor_2_x_jacobian[j][i] + list_sensor_3_x_jacobian[j][i]) / 3)
+            average_jy.append(
+                (list_sensor_1_y_jacobian[j][i] + list_sensor_2_y_jacobian[j][i] + list_sensor_3_y_jacobian[j][i]) / 3)
+            average_jz.append(
+                (list_sensor_1_z_jacobian[j][i] + list_sensor_2_z_jacobian[j][i] + list_sensor_3_z_jacobian[j][i]) / 3)
+
+        average_J_x.append(average_jx)
+        average_J_y.append(average_jy)
+        average_J_z.append(average_jz)
+
+    plt.figure()
+    ax = plt.axes(projection='3d')
+    sampling_per_number = 3
+    # for j in range(len(calibration_data_x_point_1_j)):
+    #     ax.scatter3D(calibration_data_x_point_1_j[j][::sampling_per_number], calibration_data_y_point_1_j[j][::sampling_per_number],
+    #                  calibration_data_z_point_1_j[j][::sampling_per_number], cmap='Reds')
+    #     ax.scatter3D(calibration_data_x_point_2_j[j][::sampling_per_number], calibration_data_y_point_2_j[j][::sampling_per_number],
+    #                  calibration_data_z_point_2_j[j][::sampling_per_number], cmap='Reds')
+    #     ax.scatter3D(calibration_data_x_point_3_j[j][::sampling_per_number], calibration_data_y_point_3_j[j][::sampling_per_number],
+    #                  calibration_data_z_point_3_j[j][::sampling_per_number], cmap='Reds')
+    #     ax.scatter3D(calibration_data_x_point_4_j[j][::sampling_per_number], calibration_data_y_point_4_j[j][::sampling_per_number],
+    #                  calibration_data_z_point_4_j[j][::sampling_per_number], cmap='Reds')
+    #     ax.scatter3D(average_J_x[j][::sampling_per_number], average_J_y[j][::sampling_per_number], average_J_z[j][::sampling_per_number])
+    j = 8
+    print(average_J_x[j][::sampling_per_number])
+    ax.scatter3D(calibration_data_x_point_1_j[j][::sampling_per_number], calibration_data_y_point_1_j[j][::sampling_per_number],
+                 calibration_data_z_point_1_j[j][::sampling_per_number], cmap='Reds')
+    ax.scatter3D(calibration_data_x_point_2_j[j][::sampling_per_number], calibration_data_y_point_2_j[j][::sampling_per_number],
+                 calibration_data_z_point_2_j[j][::sampling_per_number], cmap='Reds')
+    ax.scatter3D(calibration_data_x_point_3_j[j][::sampling_per_number], calibration_data_y_point_3_j[j][::sampling_per_number],
+                 calibration_data_z_point_3_j[j][::sampling_per_number], cmap='Reds')
+    ax.scatter3D(calibration_data_x_point_4_j[j][::sampling_per_number], calibration_data_y_point_4_j[j][::sampling_per_number],
+                 calibration_data_z_point_4_j[j][::sampling_per_number], cmap='Reds')
+    ax.scatter3D(average_J_x[j][::sampling_per_number], average_J_y[j][::sampling_per_number], average_J_z[j][::sampling_per_number])
+
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    plt.figure()
+    ax2 = plt.axes(projection='3d')
+    # for j in range(len(calibration_data_x_point_1_j)):
+    #     ax2.scatter3D(calibration_data_x_point_1_p[j][::sampling_per_number], calibration_data_y_point_1_p[j][::sampling_per_number],
+    #                   calibration_data_z_point_1_p[j][::sampling_per_number], cmap='Reds')
+    #     # ax.scatter3D(calibration_data_x_point_2_p[j], calibration_data_y_point_2_p[j],
+    #     #             calibration_data_z_point_2_p[j], cmap='Reds')
+    #     ax2.scatter3D(calibration_data_x_point_3_p[j][::sampling_per_number], calibration_data_y_point_3_p[j][::sampling_per_number],
+    #                   calibration_data_z_point_3_p[j][::sampling_per_number], cmap='Reds')
+    #     ax2.scatter3D(calibration_data_x_point_4_p[j][::sampling_per_number], calibration_data_y_point_4_p[j][::sampling_per_number],
+    #                   calibration_data_z_point_4_p[j][::sampling_per_number], cmap='Reds')
+    #     ax2.scatter3D(average_P_x[j][::sampling_per_number], average_P_y[j][::sampling_per_number], average_P_z[j][::sampling_per_number])
+    #
+    # ax2.set_xlabel('X')
+    # ax2.set_ylabel('Y')
+    # ax2.set_zlabel('Z')
+    # plt.show()
+
+    plt.figure(3)
+    for j in range(len(average_J_z)):
+        center_x = (np.mean(calibration_data_x_point_4_j[j]) / 2 - np.mean(calibration_data_x_point_2_j[j]) / 2) + \
+                   np.max([np.mean(calibration_data_x_point_4_j[j]), np.mean(calibration_data_x_point_2_j[j])]) + 5
+        center_y = (np.mean(calibration_data_z_point_2_j[j]) / 2 - np.mean(calibration_data_z_point_1_j[j]) / 2) + \
+                   np.min([np.mean(calibration_data_z_point_2_j[j]), np.mean(calibration_data_z_point_1_j[j])])
+        print(center_x, center_y, 'jacobian')
+        path_x = np.ones(len(average_J_y[j])) * center_x
+        path_y = np.ones(len(average_J_y[j])) * center_y
+        # plt.subplot(221)
+        # plt.plot(average_J_y[j], average_J_z[j], '-*', label='Jacobian experiment' + str(j))
+        # plt.subplot(222)
+        # plt.plot(average_J_y[j], average_J_x[j], '-*', label='Jacobian experiment' + str(j))
+        plt.subplot(221)
+        plt.plot(average_J_y[j], np.absolute(average_J_z[j] - path_y), '-o')
+        plt.subplot(222)
+        plt.plot(average_J_y[j], np.absolute(average_J_x[j] - path_x), '-o')
+
+    plt.subplot(221)
+    plt.gca().set_title('Error X Axis')
+    plt.ylabel('Jacobian')
+    plt.subplot(222)
+    plt.gca().set_title('Error Y Axis')
+    plt.subplot(223)
+    plt.ylabel('P. Field')
+
+    for j in range(len(average_P_x)):
+        center_x = (np.mean(calibration_data_x_point_4_p[j]) / 2 - np.mean(calibration_data_x_point_2_p[j]) / 2) + \
+                   np.max([np.mean(calibration_data_x_point_4_p[j]), np.mean(calibration_data_x_point_2_p[j])]) + 5
+        center_y = (np.mean(calibration_data_z_point_2_p[j]) / 2 - np.mean(calibration_data_z_point_1_p[j]) / 2) + \
+                   np.min([np.mean(calibration_data_z_point_2_p[j]), np.mean(calibration_data_z_point_1_p[j])])
+        print(center_x, center_y)
+        path_x = np.ones(len(average_P_y[j])) * center_x
+        path_y = np.ones(len(average_P_y[j])) * center_y
+        # plt.subplot(221)
+        # plt.plot(average_P_y[j], average_P_z[j], '-*', label='P. Field experiment' + str(j))
+        # plt.subplot(222)
+        # plt.plot(average_P_y[j], average_P_x[j], '-*', label='P. Field experiment' + str(j))
+        plt.subplot(223)
+        plt.plot(average_P_y[j], np.absolute(average_P_z[j] - path_y), '-o')
+        plt.subplot(224)
+        plt.plot(average_P_y[j], np.absolute(average_P_x[j] - path_x), '-o')
+
+    plt.figure(4)
+    for j in range(len(list_target_x_jacobian)):
+        center_point_x_j = np.ones(len(average_J_y[j])) * 150
+        center_point_y_j = np.ones(len(average_J_y[j])) * 150
+
+        plt.subplot(221)
+        plt.plot(average_J_y[j], np.abs(list_target_x_jacobian[j] - center_point_x_j))
+        plt.subplot(222)
+        plt.plot(average_J_y[j], np.abs(list_target_y_jacobian[j] - center_point_y_j))
+
+    for j in range(len(list_target_y_potential)):
+        center_point_x_j = np.ones(len(average_P_y[j])) * 150
+        center_point_y_j = np.ones(len(average_P_y[j])) * 150
+
+        plt.subplot(223)
+        plt.plot(average_P_y[j], np.abs(list_target_x_potential[j] - center_point_x_j))
+        plt.subplot(224)
+        plt.plot(average_P_y[j], np.abs(list_target_y_potential[j] - center_point_y_j))
+
+    plt.subplot(221)
+    plt.gca().set_title('Error X Axis')
+    plt.ylabel('Jacobian')
+    plt.subplot(222)
+    plt.gca().set_title('Error Y Axis')
+    plt.subplot(223)
+    plt.ylabel('P. Field')
+
+    j = 3
+
+    plt.figure(5, figsize=(7, 7), frameon=False)
+    plt.subplot(111)
+    plt.plot(average_J_y[j][::sampling_per_number], average_J_z[j][::sampling_per_number], 'ro')
+    plt.xlim(-25, 125)
+    plt.ylim(-200, -50)
+    plt.savefig('C:\\Users\\cflai\\Documents\\TROspecial\\result_figure\\' + 'test.png', transparent=True)
+
+
+    print(average_J_y[j][::sampling_per_number])
+    gt = GroundTruth(np.array(average_J_y[j][::sampling_per_number]), length=20)
+    gt.x_init()
+    gt.y_init(x_flip=True, y_flip=False)
+    gt.shift_y(dy=-108.72) # path 2
+    # gt.shift_y(dy=-139) # path 3
+    plt.figure(6, figsize=(7, 7), frameon=False)
+    plt.subplot(111)
+    plt.plot(average_J_y[j][::sampling_per_number], average_J_z[j][::sampling_per_number], 'yx')
+    plt.plot(average_J_y[j][::sampling_per_number], gt.y, 'ro')
+    print('error:', gt.diff(average_J_z[j][::sampling_per_number]))
+    plt.fill_between(average_J_y[j][::sampling_per_number],
+                     average_J_z[j][::sampling_per_number],
+                     gt.y,
+                     alpha=0.5)
+    print("calix", calibration_points["limit_point_x"], "caliy", calibration_points["limit_point_y"])
+
+    print(np.concatenate((gt.y1, gt.y2, gt.y3)).tolist())
+    # plt.xlim(-25, 125)
+    # plt.ylim(-200, -50)
+
+
+
+    #Finish time session:
+    list_time_delta_jacobian = mapping_time(list_time_jacobian)
+    list_time_delta_potential = mapping_time(list_time_potential)
+    finish_time_jacobian = find_finish_time(list_time_delta_jacobian)
+    finish_time_potential = find_finish_time(list_time_delta_potential)
+    average_finish_time_jacobian = calculate_average(finish_time_jacobian)
+    average_finish_time_potential = calculate_average(finish_time_potential)
+    print('jacobian finish time:', average_finish_time_jacobian)
+    print('potential finish time:', average_finish_time_potential)
+    print('------------p value-------------')
+    calculate_kruskal_p_value(finish_time_jacobian, finish_time_potential)
+
+    return
+# end of analyze_navigation_task
+
+def analyze_navigation_task_stop_frequency(dir_folder):
+    list_folders = os.listdir(dir_folder)
+    jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
+    potential_field = [folder for folder in list_folders if "potential_field" in folder]
+
+    list_time_jacobian = []
+    list_stepper_jacobian = []
+    list_time_potential = []
+    list_stepper_potential = []
+
+    for j, folder in enumerate(jacobian_results):
+        data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+        list_time_jacobian.append(data['time'].tolist())
+        list_stepper_jacobian.append(data['stepper'].tolist())
+
+    for j, folder in enumerate(potential_field):
+        data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
+        list_time_potential.append(data['time'].tolist())
+        list_stepper_potential.append(data['stepper'].tolist())
+
+    for j in range(len(list_stepper_jacobian)):
+        plt.subplot(211)
+        plt.plot(list_stepper_jacobian[j], 'o', label='Jacobian experiment ' + str(j))
+        plt.legend(loc='best')
+        plt.title('Stepper_Jacobian')
+
+    for j in range(len(list_stepper_potential)):
+        plt.subplot(212)
+        plt.plot(list_stepper_potential[j], 'o', label='Potential experiment ' + str(j))
+        plt.legend(loc='best')
+        plt.title('Stepper_Potential')
+
+    jacobian_stop_frequency = calculate_stop_times(list_stepper_jacobian)
+    stat_jacobian_stop_frequency = calculate_list_stat(jacobian_stop_frequency)
+    potential_stop_frequency = calculate_stop_times(list_stepper_potential)
+    stat_potential_stop_frequency = calculate_list_stat(potential_stop_frequency)
+    print('Jacobian(Avg, Std):', stat_jacobian_stop_frequency, 'Potential(Avg, Std):', stat_potential_stop_frequency)
+    print('------------p value-------------')
+    calculate_kruskal_p_value(stat_jacobian_stop_frequency, stat_potential_stop_frequency)
 
 
 def canalyze_centering_img(dir_folder):
@@ -846,20 +1319,15 @@ def canalyze_centering_img(dir_folder):
 
     list_target_x_jacobian = []
     list_target_y_jacobian = []
-    list_time_jacobian = []
 
     list_target_x_potential = []
     list_target_y_potential = []
-    list_time_potential = []
 
-    # plot x vs y
     for j, folder in enumerate(potential_field):
         j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
         data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
         list_target_x_jacobian.append(data['filtered x'].tolist())
         list_target_y_jacobian.append(data['filtered y'].tolist())
-        list_time_jacobian.append(data['time'].tolist())
-    list_time_delta_jacobian = mapping_time(list_time_jacobian)
 
     for j, folder in enumerate(jacobian_results):
         j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
@@ -867,34 +1335,26 @@ def canalyze_centering_img(dir_folder):
         data = pd.read_csv(os.path.join(dir_folder, folder, 'experiment_' + folder[-16:] + '_.csv'))
         list_target_x_potential.append(data['filtered x'].tolist())
         list_target_y_potential.append(data['filtered y'].tolist())
-        list_time_potential.append(data['time'].tolist())
-    list_time_delta_potential = mapping_time(list_time_potential)
 
+    color_list = ['']
     plt.figure()
 
-    # plot x/y vs time
     for j in range(len(list_target_x_jacobian)):
-        plt.subplot(241)
+        plt.subplot(231)
         plt.plot(list_target_x_jacobian[j],
                  list_target_y_jacobian[j],
-                 '-*', label='Jacobian experiment ' + str(j))
+                 marker='-*', color=color_list[j], label='Jacobian experiment ' + str(j))
         plt.legend(loc='best')
         center_target = np.ones(len(list_target_x_jacobian[j])) * 150
         plt.plot(150, 150, 'rX')
-        plt.title('Visual Target X vs Y')
 
-        plt.subplot(242)
-        plt.plot(list_time_delta_jacobian[j], mapping_function(list_target_x_jacobian[j] - center_target),
-                 marker='None')
-        plt.title('Visual Target X vs Time')
-
-        plt.subplot(243)
-        plt.plot(list_time_delta_jacobian[j], mapping_function(list_target_y_jacobian[j] - center_target),
-                 marker='None')
-        plt.title('Visual Target Y vs Time')
+        plt.subplot(232)
+        plt.plot(list_target_x_jacobian[j] - center_target, marker='None')
+        plt.subplot(233)
+        plt.plot(list_target_y_jacobian[j] - center_target, marker='None')
 
     for j in range(len(list_target_x_potential)):
-        plt.subplot(245)
+        plt.subplot(234)
         plt.plot(list_target_x_potential[j],
                  list_target_y_potential[j],
                  '-*', label='P. Field experiment ' + str(j))
@@ -904,361 +1364,19 @@ def canalyze_centering_img(dir_folder):
         center_target = np.ones(len(list_target_x_potential[j])) * 150
         plt.plot(150, 150, 'rX')
 
-        plt.subplot(246)
-        plt.plot(list_time_delta_potential[j], mapping_function(list_target_x_potential[j] - center_target),
-                 marker='None')
-        plt.subplot(247)
-        plt.plot(list_time_delta_potential[j], mapping_function(list_target_y_potential[j] - center_target),
-                 marker='None')
-
-    list_target_radius_jacobian = calculate_radius(list_target_x_jacobian, list_target_y_jacobian)
-    list_target_radius_potential = calculate_radius(list_target_x_potential, list_target_y_potential)
-    for j in range(len(list_target_radius_jacobian)):
-        plt.subplot(244)
-        plt.plot(list_time_delta_jacobian[j], mapping_function(list_target_radius_jacobian[j]),
-                 marker='None')
-        plt.title('Visual Distance vs Time')
-
-        plt.subplot(248)
-        plt.plot(list_time_delta_potential[j], mapping_function(list_target_radius_potential[j]),
-                 marker='None')
-
-    return list_target_x_jacobian, list_target_y_jacobian, list_time_delta_jacobian, \
-           list_target_x_potential, list_target_y_potential, list_time_delta_potential
-
-
-def data_abs_to_per(list_data_abs, target_center=150):
-    list_data_per = []
-    for i in range(len(list_data_abs)):
-        set_point = np.ones(len(list_data_abs[i])) * target_center
-        list_data_per.append(mapping_function(list_data_abs[i] - set_point))
-
-    return list_data_per
-
-
-def calculate_radius(list_x, list_y, target_center=(150, 150)):
-    list_radius = []
-    for x, y in zip(list_x, list_y):
-        np_x = np.array(x) - target_center[0]
-        np_y = np.array(y) - target_center[1]
-        np_radius = np.sqrt(np_x * np_x + np_y * np_y)
-        radius = np_radius.tolist()
-        list_radius.append(radius)
-
-    return list_radius
-
-
-def find_steady_state_error(list_data_per, window_size=30):
-    ss_error = []
-    for data in list_data_per:
-        error = (sum(data[-window_size:]) / window_size - 1) * 100
-        ss_error.append(error)
-    return ss_error
-
-
-def find_steady_state_error_abs(list_data_per, window_size=30):
-    ss_error = []
-    for data in list_data_per:
-        error = (sum(data[-window_size:]) / window_size - 1) * 100
-        ss_error.append(abs(error))
-    return ss_error
-
-
-def find_steady_state_error_num(list_data_per, window_size=30):
-    ss_error = []
-    target_center = 150
-    for data in list_data_per:
-        error = sum(data[-window_size:]) / window_size - target_center
-        ss_error.append(abs(error))
-    return ss_error
-
-
-def find_overshooting(list_data_per):
-    overshooting = []
-    overshooting_plus = []
-    for data in list_data_per:
-        overshooting.append((max(data) - 1) * 100)
-        if max(data) > 1:
-            overshooting_plus.append((max(data) - 1) * 100)
-    print('hello I am here!--------------------------------------: ', len(overshooting_plus))
-    return overshooting, overshooting_plus
-
-
-def find_rise_time(list_data_per, list_data_time, rise_time_threshold=0.1):
-    rise_time = []
-    for data, t in zip(list_data_per, list_data_time):
-        ind_time_20 = next(i for i, v in enumerate(data) if v > rise_time_threshold)
-        ind_time_80 = next(i for i, v in enumerate(data) if v > 0.7)
-        rise_time.append(t[ind_time_80] - t[ind_time_20])
-    return rise_time
-
-
-def find_settling_time(list_data_per, list_data_time, cut_off=0.1):
-    rise_time = []
-    for data, t in zip(list_data_per, list_data_time):
-        ind_time = next(i for i, v in reversed(list(enumerate(data))) if v < 1 - cut_off or v > 1 + cut_off)
-        rise_time.append(t[ind_time])
-    return rise_time
-
-
-def canalyze_centering_per(data_list, fig_title):
-    list_target_x_jacobian, list_target_y_jacobian, list_time_delta_jacobian, \
-    list_target_x_potential, list_target_y_potential, list_time_delta_potential = data_list
-
-    list_target_radius_jacobian = calculate_radius(list_target_x_jacobian, list_target_y_jacobian)
-    list_target_radius_potential = calculate_radius(list_target_x_potential, list_target_y_potential)
-
-    list_target_radius_jacobian_per = data_abs_to_per(list_target_radius_jacobian, target_center=0)
-    list_target_radius_potential_per = data_abs_to_per(list_target_radius_potential, target_center=0)
-    list_target_x_jacobian_per = data_abs_to_per(list_target_x_jacobian)
-    list_target_y_jacobian_per = data_abs_to_per(list_target_y_jacobian)
-    list_target_x_potential_per = data_abs_to_per(list_target_x_potential)
-    list_target_y_potential_per = data_abs_to_per(list_target_y_potential)
-
-    list_data_average = []
-    list_data_variance = []
-
-    # steady_state_error_in_num
-    target_x_jacobian_steady_state_error_num = find_steady_state_error_num(list_target_x_jacobian)
-    target_y_jacobian_steady_state_error_num = find_steady_state_error_num(list_target_y_jacobian)
-    target_radius_jacobian_steady_state_error_num = find_steady_state_error_num(list_target_radius_jacobian)
-    target_x_potential_steady_state_error_num = find_steady_state_error_num(list_target_x_potential)
-    target_y_potential_steady_state_error_num = find_steady_state_error_num(list_target_y_potential)
-    target_radius_potential_steady_state_error_num = find_steady_state_error_num(list_target_radius_potential)
-    average_steady_state_error_num = [calculate_list_average(target_x_jacobian_steady_state_error_num),
-                                      calculate_list_average(target_x_potential_steady_state_error_num),
-                                      calculate_list_average(target_y_jacobian_steady_state_error_num),
-                                      calculate_list_average(target_y_potential_steady_state_error_num),
-                                      calculate_list_average((abs(np.array(target_radius_jacobian_steady_state_error_num)-150).tolist())),
-                                      calculate_list_average((abs(np.array(target_radius_potential_steady_state_error_num)-150).tolist()))]
-
-    variance_steady_state_error_num = [calculate_list_std(target_x_jacobian_steady_state_error_num),
-                                       calculate_list_std(target_x_potential_steady_state_error_num),
-                                       calculate_list_std(target_y_jacobian_steady_state_error_num),
-                                       calculate_list_std(target_y_potential_steady_state_error_num),
-                                       calculate_list_std(target_radius_jacobian_steady_state_error_num),
-                                       calculate_list_std(target_radius_potential_steady_state_error_num)]
-    list_data_average.append(average_steady_state_error_num)
-    list_data_variance.append(variance_steady_state_error_num)
-    print('SSerror:', average_steady_state_error_num, variance_steady_state_error_num)
-    print(' ------SSE   num    P value------ ')
-    print('for x:')
-    calculate_kruskal_p_value(target_x_jacobian_steady_state_error_num, target_x_potential_steady_state_error_num)
-    print('for y:')
-    calculate_kruskal_p_value(target_y_jacobian_steady_state_error_num, target_y_potential_steady_state_error_num)
-    print('for r:')
-    calculate_kruskal_p_value(target_radius_jacobian_steady_state_error_num,
-                              target_radius_potential_steady_state_error_num)
-    print(' -------------------------------- ')
-
-    # steady_state_error_in_percentage
-    target_x_jacobian_steady_state_error = find_steady_state_error_abs(list_target_x_jacobian_per)
-    target_y_jacobian_steady_state_error = find_steady_state_error_abs(list_target_y_jacobian_per)
-    target_radius_jacobian_steady_state_error = find_steady_state_error_abs(list_target_radius_jacobian_per)
-    target_x_potential_steady_state_error = find_steady_state_error_abs(list_target_x_potential_per)
-    target_y_potential_steady_state_error = find_steady_state_error_abs(list_target_y_potential_per)
-    target_radius_potential_steady_state_error = find_steady_state_error_abs(list_target_radius_potential_per)
-    average_steady_state_error = [calculate_list_average(target_x_jacobian_steady_state_error),
-                                  calculate_list_average(target_x_potential_steady_state_error),
-                                  calculate_list_average(target_y_jacobian_steady_state_error),
-                                  calculate_list_average(target_y_potential_steady_state_error),
-                                  calculate_list_average(target_radius_jacobian_steady_state_error),
-                                  calculate_list_average(target_radius_potential_steady_state_error)]
-
-    variance_steady_state_error = [calculate_list_std(target_x_jacobian_steady_state_error),
-                                   calculate_list_std(target_x_potential_steady_state_error),
-                                   calculate_list_std(target_y_jacobian_steady_state_error),
-                                   calculate_list_std(target_y_potential_steady_state_error),
-                                   calculate_list_std(target_radius_jacobian_steady_state_error),
-                                   calculate_list_std(target_radius_potential_steady_state_error)]
-    list_data_average.append(average_steady_state_error)
-    list_data_variance.append(variance_steady_state_error)
-    print('SSerror:', average_steady_state_error, variance_steady_state_error)
-    print(' ------SSE   per    P value------ ')
-    print('for x:')
-    calculate_kruskal_p_value(target_x_jacobian_steady_state_error,
-                              target_x_potential_steady_state_error)
-    print('for y:')
-    calculate_kruskal_p_value(target_y_jacobian_steady_state_error,
-                              target_y_potential_steady_state_error)
-    print('for r:')
-    calculate_kruskal_p_value(target_radius_jacobian_steady_state_error,
-                              target_radius_potential_steady_state_error)
-    print(' -------------------------------- ')
-
-    # rise time
-    target_x_jacobian_rise_time = find_rise_time(list_target_x_jacobian_per, list_time_delta_jacobian)
-    target_y_jacobian_rise_time = find_rise_time(list_target_y_jacobian_per, list_time_delta_jacobian)
-    target_radius_jacobian_rise_time = find_rise_time(list_target_radius_jacobian_per, list_time_delta_jacobian)
-    target_x_potential_rise_time = find_rise_time(list_target_x_potential_per, list_time_delta_potential)
-    target_y_potential_rise_time = find_rise_time(list_target_y_potential_per, list_time_delta_potential)
-    target_radius_potential_rise_time = find_rise_time(list_target_radius_potential_per, list_time_delta_jacobian)
-
-    average_rise_time = [calculate_list_average(target_x_jacobian_rise_time),
-                         calculate_list_average(target_x_potential_rise_time),
-                         calculate_list_average(target_y_jacobian_rise_time),
-                         calculate_list_average(target_y_potential_rise_time),
-                         calculate_list_average(target_radius_jacobian_rise_time),
-                         calculate_list_average(target_radius_potential_rise_time)]
-    variance_rise_time = [calculate_list_std(target_x_jacobian_rise_time),
-                          calculate_list_std(target_x_potential_rise_time),
-                          calculate_list_std(target_y_jacobian_rise_time),
-                          calculate_list_std(target_y_potential_rise_time),
-                          calculate_list_std(target_radius_jacobian_rise_time),
-                          calculate_list_std(target_radius_potential_rise_time)]
-    list_data_average.append(average_rise_time)
-    list_data_variance.append(variance_rise_time)
-    print('RT:', average_rise_time, variance_rise_time)
-    print(' ------rising time P value------- ')
-    print('for x:')
-    calculate_kruskal_p_value(target_x_jacobian_rise_time, target_x_potential_rise_time)
-    print('for y:')
-    calculate_kruskal_p_value(target_y_jacobian_rise_time, target_y_potential_rise_time)
-    print('for radius:')
-    calculate_kruskal_p_value(target_radius_jacobian_rise_time, target_radius_potential_rise_time)
-    print(' -------------------------------- ')
-
-    # settling time
-
-    target_x_jacobian_settling_time = find_settling_time(list_target_x_jacobian_per, list_time_delta_jacobian)
-    target_y_jacobian_settling_time = find_settling_time(list_target_y_jacobian_per, list_time_delta_jacobian)
-    target_radius_jacobian_settling_time = find_settling_time(list_target_radius_jacobian_per, list_time_delta_jacobian)
-    target_x_potential_settling_time = find_settling_time(list_target_x_potential_per, list_time_delta_potential)
-    target_y_potential_settling_time = find_settling_time(list_target_y_potential_per, list_time_delta_potential)
-    target_radius_potential_settling_time = find_settling_time(list_target_radius_potential_per,
-                                                               list_time_delta_jacobian)
-    average_settling_time = [calculate_list_average(target_x_jacobian_settling_time),
-                             calculate_list_average(target_x_potential_settling_time),
-                             calculate_list_average(target_y_jacobian_settling_time),
-                             calculate_list_average(target_y_potential_settling_time),
-                             calculate_list_average(target_radius_jacobian_settling_time),
-                             calculate_list_average(target_radius_potential_settling_time)]
-    variance_settling_time = [calculate_list_std(target_x_jacobian_settling_time),
-                              calculate_list_std(target_x_potential_settling_time),
-                              calculate_list_std(target_y_jacobian_settling_time),
-                              calculate_list_std(target_y_potential_settling_time),
-                              calculate_list_std(target_radius_jacobian_settling_time),
-                              calculate_list_std(target_radius_potential_settling_time)
-                              ]
-    list_data_average.append(average_settling_time)
-    list_data_variance.append(variance_settling_time)
-    print('ST:', average_settling_time, variance_settling_time)
-    print(' ------settling time P value----- ')
-    print('for x:\n')
-    calculate_kruskal_p_value(target_x_jacobian_settling_time, target_x_potential_settling_time)
-    print('for y:\n')
-    calculate_kruskal_p_value(target_y_jacobian_settling_time, target_y_potential_settling_time)
-    print('for r:\n')
-    calculate_kruskal_p_value(target_radius_jacobian_settling_time, target_radius_potential_settling_time)
-    print(' -------------------------------- ')
-
-    # over_shooting
-    target_x_jacobian_overshooting = find_overshooting(list_target_x_jacobian_per)[1]
-    target_y_jacobian_overshooting = find_overshooting(list_target_y_jacobian_per)[1]
-    target_x_potential_overshooting = find_overshooting(list_target_x_potential_per)[1]
-    target_y_potential_overshooting = find_overshooting(list_target_y_potential_per)[1]
-    average_overshooting = [calculate_list_average(target_x_jacobian_overshooting),
-                            calculate_list_average(target_x_potential_overshooting),
-                            calculate_list_average(target_y_jacobian_overshooting),
-                            calculate_list_average(target_y_potential_overshooting)]
-    variance_overshooting = [calculate_list_std(target_x_jacobian_overshooting),
-                             calculate_list_std(target_x_potential_overshooting),
-                             calculate_list_std(target_y_jacobian_overshooting),
-                             calculate_list_std(target_y_potential_overshooting)]
-    # No over shoot for target radius
-    list_data_average.append(average_overshooting)
-    list_data_variance.append(variance_overshooting)
-    print('OS:', average_overshooting, variance_overshooting)
-    print(' ------overshooting P value------ ')
-    print('for x:')
-    calculate_kruskal_p_value(target_x_jacobian_overshooting, target_x_potential_overshooting)
-    print('for y:')
-    calculate_kruskal_p_value(target_y_jacobian_overshooting, target_y_potential_overshooting)
-    print(' -------------------------------- ')
-
-    # Start to plot
-    labels = ['J_x', 'PF_x', 'J_y', 'PF_y', 'J_r', 'PF_r']
-    labels_less = ['J_x', 'PF_x', 'J_y', 'PF_y']
-    y_list_label = ['pixel', '%', '%', 'time(sec)', 'time(sec)']
-    list_label = [labels, labels, labels, labels, labels_less]
-    list_title = ['Steady State Error(pixel)', 'Steady State Error(%)', 'Rising Time', 'Settling Time', 'Over Shooting']
-
-    fig, axes = plt.subplots(1, len(list_title), figsize=(24, 7))
-    fig.suptitle(fig_title, fontsize=16)
-
-    for ax, label, y_labels, title, average, variance in zip(axes, list_label, y_list_label, list_title, list_data_average, list_data_variance):
-        if len(average) is 6:
-            ax.bar(label, average, yerr=variance, color=['red', 'red', 'blue', 'blue', 'green', 'green'],
-                   align='center', alpha=0.5, ecolor='black', capsize=10)
-        elif len(average) is 4:
-            ax.bar(label, average, yerr=variance, color=['red', 'red', 'blue', 'blue'],
-                   align='center', alpha=0.5, ecolor='black', capsize=10)
-        # table = ax.table(cellText=[np.around(np.array(average), 2), np.around(np.array(variance), 2)],
-        #                  rowLabels=["average", "variance"], loc="bottom")
-        # table.set_fontsize(40)
-        ax.set_title(title)
-        ax.set_ylabel(y_labels)
-        print
-        for i, (v ,w) in enumerate(zip(average, variance)):
-            ax.text(i, v + 0.3, str(round(v, 2)), color='blue', va='center', fontweight='bold')
-            ax.text(i, v + w +0.3, str(round(w, 2)), color='black', va='center', fontweight='bold')
-        # for i, v in enumerate(variance):
-        #     ax.text(i-0.7, v, str(round(v, 2)), color='black', va='center', fontweight='bold')
-
-    # fig, ax = plt.subplots(1, 1)
-    # data = [[1, 2, 3],
-    #         [5, 6, 7]]
-    # column_labels = ["Column 1", "Column 2", "Column 3"]
-    # ax.axis('tight')
-    # ax.axis('off')
-    # ax.table(cellText=data, colLabels=column_labels, rowLabels=["average", "variance"], loc="center")
-
-    # axes[0].bar(labels, average_steady_state_error, yerr=variance_steady_state_error,
-    #             align='center', alpha=0.5, ecolor='black', capsize=10)
-    # axes[0].set_title('Steady State Error(%)')
-    # for i, v in enumerate(average_steady_state_error):
-    #     axes[0].text(i, v, str(round(v, 2)), color='blue', va='center', fontweight='bold')
-    # axes[1].bar(labels_less, np.array(average_overshooting) - 1, yerr=variance_overshooting, # to be determined?
-    #             align='center', alpha=0.5, ecolor='black', capsize=10)
-    # axes[1].set_title('Over shoot')
-    # axes[2].bar(labels_less, average_rise_time, yerr=variance_rise_time,
-    #             align='center', alpha=0.5, ecolor='black', capsize=10)
-    # axes[2].set_title('Rising Time')
-    # axes[3].bar(labels_less, average_settling_time, yerr=variance_settling_time,
-    #             align='center', alpha=0.5, ecolor='black', capsize=10)
-    # axes[3].set_title('Settling Time')
-
-    return 0
-
-
-def canalyze_centering_num(data_list):
-    list_target_x_jacobian, list_target_y_jacobian, list_time_delta_jacobian, \
-    list_target_x_potential, list_target_y_potential, list_time_delta_potential = data_list
-
-    return 0
+        plt.subplot(235)
+        plt.plot(list_target_x_potential[j] - center_target, marker='None')
+        plt.subplot(236)
+        plt.plot(list_target_y_potential[j] - center_target, marker='None')
 
 
 if __name__ == '__main__':
     # plot 3_D data
     # directory_2 = os.getcwd() + '/results/n_control/straight_line/'
-    # analyze_results(directory)
+    # analyze_results(directory)203
     # directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     # plot_3D_data(directory_1)
-    print(os.getcwd())
-    file_dir = 'C:\\Users\\cflai\\Documents\\TROspecial\\result_figure\\'
-    # directory = os.getcwd() + '\\to_analyze\\task_1\\ic_1\\'
-    # saved_data_list = canalyze_centering_img(directory)
-    # canalyze_centering_per(saved_data_list, 'ic_1 (n = 5)')
-    # canalyze_centering_num(saved_data_list)
-    # plt.savefig(file_dir + 'ic1.png', transparent=True)
-    # directory = os.getcwd() + '\\to_analyze\\task_1\\ic_2\\'
-    # saved_data_list = canalyze_centering_img(directory)
-    # canalyze_centering_per(saved_data_list, 'ic_2 (n = 5)')
-    # canalyze_centering_num(saved_data_list)
-    # plt.savefig(file_dir + 'ic2.png', transparent=True)
-    directory = os.getcwd() + '\\to_analyze\\task_1\\all\\'
-    saved_data_list = canalyze_centering_img(directory)
-    canalyze_centering_per(saved_data_list, 'ic_1+ic_2 (n = 10)')
-    canalyze_centering_num(saved_data_list)
-    plt.savefig(file_dir + 'all.png', transparent=True)
+    directory = os.getcwd() + '/to_analyze/task_2/path_2/'
+    analyze_navigation_task(directory)
+    # analyze_navigation_task_stop_frequency(directory)
     plt.show()
