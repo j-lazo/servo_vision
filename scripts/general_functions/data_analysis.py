@@ -1457,7 +1457,7 @@ def analyze_smoothness(dir_folder):
         plt.plot(center_y, center_z)
         time_steps_jacobian = get_steps_length(time_stamps_jacobian[j][0])
         fs = 1./(np.median(time_steps_jacobian))
-        performances_jacobian.append(log_dimensionless_jerk([center_x, center_y, center_z][2], fs))
+        performances_jacobian.append(spectral_arclength([center_x, center_y, center_z][2], fs)[0])
         speed_metric_jacobian.append(speed_metric(center_z))
         num_peaks_jacobian.append(number_of_peaks(center_z))
 
@@ -1473,7 +1473,7 @@ def analyze_smoothness(dir_folder):
         plt.plot(center_y, center_z, label='experiment ' + str(j))
         time_steps_p_field = get_steps_length(time_stamps_potential_field[j][0])
         fs = 1./(np.median(time_steps_p_field))
-        performances_p_field.append(log_dimensionless_jerk([center_x, center_y, center_z][2], fs))
+        performances_p_field.append(spectral_arclength([center_x, center_y, center_z][2], fs)[0])
         speed_metric_p_field.append(speed_metric(center_z))
         num_peaks_p_field.append(number_of_peaks(center_z))
 
@@ -1484,29 +1484,30 @@ def analyze_smoothness(dir_folder):
     print('Jacobian:')
     print('Smoothness')
     print(np.mean(performances_jacobian), np.median(performances_jacobian), np.std(performances_jacobian))
-    print('Speed metric')
-    print(np.mean(speed_metric_jacobian), np.median(speed_metric_jacobian), np.std(speed_metric_jacobian))
+    #print('Speed metric')
+    #print(np.mean(speed_metric_jacobian), np.median(speed_metric_jacobian), np.std(speed_metric_jacobian))
     print('Number of peaks')
     print(np.mean(num_peaks_jacobian), np.median(num_peaks_jacobian), np.std(num_peaks_jacobian))
     print('Potential Field:')
-    print(np.mean(performances_jacobian), np.median(performances_jacobian), np.std(performances_jacobian))
     print('Smoothness')
     print(np.mean(performances_p_field), np.median(performances_p_field), np.std(performances_p_field))
-    print('Speed metric')
-    print(np.mean(speed_metric_p_field), np.median(speed_metric_p_field), np.std(speed_metric_p_field))
+    #print('Speed metric')
+    #print(np.mean(speed_metric_p_field), np.median(speed_metric_p_field), np.std(speed_metric_p_field))
     print('Number of peaks')
     print(np.mean(num_peaks_p_field), np.median(num_peaks_p_field), np.std(num_peaks_p_field))
     # Smoothness
+    print('Smoothness')
     calculate_kruskal_p_value(performances_jacobian, performances_p_field)
     df = pd.DataFrame(np.array([performances_jacobian, performances_p_field]).T,
                       columns=['Jacobian', 'Potential Field'])
     sns.catplot(kind="violin", data=df).set(ylabel='smoothness', title='Smoothness')
     # Speed metric
-    calculate_kruskal_p_value(speed_metric_jacobian, speed_metric_jacobian)
-    df1 = pd.DataFrame(np.array([speed_metric_jacobian, speed_metric_jacobian]).T,
-                      columns=['Jacobian', 'Potential Field'])
-    sns.catplot(kind="violin", data=df1).set(title='Speed Metric')
+    #calculate_kruskal_p_value(speed_metric_jacobian, speed_metric_jacobian)
+    #df1 = pd.DataFrame(np.array([speed_metric_jacobian, speed_metric_jacobian]).T,
+    #                  columns=['Jacobian', 'Potential Field'])
+    #sns.catplot(kind="violin", data=df1).set(title='Speed Metric')
     # Number of peaks
+    print('NUM PEAKS')
     calculate_kruskal_p_value(num_peaks_jacobian, num_peaks_p_field)
     df2 = pd.DataFrame(np.array([num_peaks_jacobian, num_peaks_p_field]).T,
                       columns=['Jacobian', 'Potential Field'])
@@ -1540,7 +1541,6 @@ def analyze_time(dir_folder):
     performances_p_field = []
 
     for j, experiment_data in enumerate(experiments_jacobian):
-        print(j)
         initial_time = datetime.strptime(experiment_data[0][0], '%Y-%m-%d %H:%M:%S.%f')
         end_time = datetime.strptime(experiment_data[0][-1], '%Y-%m-%d %H:%M:%S.%f')
         difference = (end_time - initial_time).total_seconds()
@@ -1570,7 +1570,6 @@ def analyze_time(dir_folder):
 
     sns.catplot(kind="violin", data=df).set(ylabel='completion time (s)')
 
-
 if __name__ == '__main__':
     # plot 3_D data
     #directory_2 = os.getcwd() + '/results/n_control/straight_line/'
@@ -1580,4 +1579,4 @@ if __name__ == '__main__':
     directory = os.getcwd() + '/to_analyze/task_2/path_1/'
     analyze_smoothness(directory)
     #analyze_time(directory)
-    plt.show()
+    #plt.show()
