@@ -9,6 +9,7 @@ from scipy.stats import kruskal
 from datetime import datetime
 import seaborn as sns
 from scipy.signal import find_peaks, peak_prominences
+import trajectories
 
 
 def smooth(a, WSZ=5):
@@ -26,31 +27,119 @@ def check_nan(array):
     return [element for element in array if not(np.isnan(element))]
 
 
-def determine_vertex_and_edges(array_points):
-    colors = ['red', 'blue', 'green', 'orange', 'purple', 'olive', 'cyan', 'pink']
-    raw_x = check_nan(array_points["limit_point_x"])
-    raw_y = check_nan(array_points["limit_point_y"])
-    raw_z = check_nan(array_points["limit_point_z"])
+def determine_vertex_and_edges(arrays_points, plot='False'):
 
+    """
+    Function to obtain separately the 8 points from a
+    @param arrays_points: an array of dictionaries with arrays of points which contains the keys:
+    'limit_point_x', 'limit_point_y', 'limit_point_z'
+    @param plot: (bool) True if you want to visualize the points, otherwise False by default
+    @return:
+    """
+
+    original_x = []
+    original_y = []
+    original_z = []
+    colors = ['red', 'blue', 'green', 'orange', 'purple', 'olive', 'cyan', 'pink']
+    # initialize empty arrays to save each of the points separate by coordinate
     points_x = [[] for _ in range(8)]
     points_y = [[] for _ in range(8)]
     points_z = [[] for _ in range(8)]
 
-    for j in range(6):
-        points_x[j] = raw_x[j*6:(j*6)+6]
-        points_y[j] = raw_y[j*6:(j*6)+6]
+    for array_points in arrays_points:
+        raw_x = check_nan(array_points["limit_point_x"])
+        raw_y = check_nan(array_points["limit_point_y"])
+        raw_z = check_nan(array_points["limit_point_z"])
 
-    plt.subplot(221)
-    for j in range(len(points_x)):
-        print(len(points_x[j]))
-        plt.plot(points_x[j], points_y[j], marker='.', color=colors[j], label='Experiment' + str(j))
-    #plt.plot(np.median(points_x), np.median(points_y), 'o')
-    #plt.subplot(222)
-    #plt.plot(points_x, points_z, '*')
-    #plt.plot(np.median(points_x), np.median(points_z), 'o')
-    #plt.subplot(223)
-    #plt.plot(points_y, points_z, '*')
-    #plt.plot(np.median(points_y), np.median(points_z), 'o')
+        if raw_x:
+            original_x.append(raw_x)
+            original_y.append(raw_y)
+            original_z.append(raw_z)
+
+
+    for k in range(len(original_x)):
+        # collecting the point 0
+        # 2DO find a better way to add it in the loop
+        points_x[0] = points_x[0] + original_x[k][:6]
+        points_y[0] = points_y[0] + original_y[k][:6]
+        points_z[0] = points_z[0] + original_z[k][:6]
+
+        # collecting the points separately by coordinate 
+        for j in range(1, 8):
+            starting_index = j * 6 + 1
+            ending_index = j * 6 + 6
+            points_x[j] = points_x[j] + original_x[k][starting_index: ending_index]
+            points_y[j] = points_y[j] + original_y[k][starting_index: ending_index]
+            points_z[j] = points_z[j] + original_z[k][starting_index: ending_index]
+
+    if plot is True:
+        fig = plt.figure()
+        ax1 = fig.add_subplot(231)
+        ax2 = fig.add_subplot(232)
+        ax3 = fig.add_subplot(233)
+        ax4 = fig.add_subplot(234)
+        ax5 = fig.add_subplot(235)
+        ax6 = fig.add_subplot(236)
+
+        ax1.title.set_text('x vs y')
+        ax2.title.set_text('x vs z')
+        ax3.title.set_text('y vs z')
+
+        # Surface 1 (front)
+        ax1.plot(points_x[0], points_z[0], 'o', label='0')
+        ax1.plot(points_x[2], points_z[2], 'o', label='2')
+        ax1.plot(points_x[4], points_z[4], 'o', label='4')
+        ax1.plot(points_x[6], points_z[6], 'o', label='6')
+
+        ax1.legend(loc='best')
+
+        # Surface 2 (right side)
+        ax2.plot(points_y[0], points_x[0], 'o', label='0')
+        ax2.plot(points_y[1], points_x[1], 'o', label='1')
+        ax2.plot(points_y[4], points_x[4], 'o', label='4')
+        ax2.plot(points_y[5], points_x[5], 'o', label='5')
+
+        ax2.legend(loc='best')
+
+        # Surface 3 (lower)
+        for i in range(4):
+            ax3.plot(points_y[i], points_z[i], 'o', label=str(i))
+            ax3.plot(np.median(points_y[i]), np.median(points_z[i]), 'y*')
+
+        ax3.legend(loc='best')
+
+        # Surface 4 (back)
+
+        ax4.plot(points_x[1], points_z[1], 'o', label='1')
+        ax4.plot(points_x[3], points_z[3], 'o', label='3')
+        ax4.plot(points_x[5], points_z[5], 'o', label='5')
+        ax4.plot(points_x[7], points_z[7], 'o', label='7')
+
+        ax4.legend(loc='best')
+
+        # Surface 5 (left side)
+
+        ax5.plot(points_y[2], points_x[2], 'o', label='2')
+        ax5.plot(points_y[3], points_x[3], 'o', label='3')
+        ax5.plot(points_y[6], points_x[5], 'o', label='6')
+        ax5.plot(points_y[7], points_x[7], 'o', label='7')
+
+        ax5.legend(loc='best')
+
+        # Surface 6 (upper)
+        for i in range(4, 8):
+            ax6.plot(points_y[i], points_z[i], 'o', label=str(i))
+            ax6.plot(np.median(points_y[i]), np.median(points_z[i]), 'y*')
+
+        ax6.legend(loc='best')
+
+    #for j in range(8):
+    #    print('Point ', j)
+    #    print('x', points_x[j])
+    #    print('y', points_y[j])
+    #    print('z', points_z[j])
+
+    return points_x, points_y, points_z
 
 
 def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
@@ -1570,13 +1659,123 @@ def analyze_time(dir_folder):
 
     sns.catplot(kind="violin", data=df).set(ylabel='completion time (s)')
 
+
+def visualize_calibration_points(dir_folder):
+
+    list_folders = os.listdir(dir_folder)
+    jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
+    potential_field = [folder for folder in list_folders if "potential_field" in folder]
+
+    calibration_points_p_field = []
+    calibration_points_jacobian = []
+    id_names_p_field = []
+    id_names_jacobian = []
+
+    for j, folder in enumerate(potential_field):
+        j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
+        calibration_points = dm.read_data_json(os.path.join(dir_folder, folder, j_son_file))
+        calibration_points_p_field.append(calibration_points)
+        id_names_p_field.append(folder[-16:])
+
+    for j, folder in enumerate(jacobian_results):
+        j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
+        calibration_points = dm.read_data_json(os.path.join(dir_folder, folder, j_son_file))
+        calibration_points_jacobian.append(calibration_points)
+        id_names_jacobian.append(folder[-16:])
+
+    fig1 = plt.figure()
+    ax1 = fig1.add_subplot(121, projection='3d')
+    for j in range(len(calibration_points_p_field)):
+        ax1.scatter3D(calibration_points_jacobian[j]['limit_point_x'],
+                      calibration_points_jacobian[j]['limit_point_y'],
+                      calibration_points_jacobian[j]['limit_point_z'],
+                      label=id_names_jacobian[j])
+
+    plt.legend(loc='best')
+    ax2 = fig1.add_subplot(122, projection='3d')
+    for j in range(len(calibration_points_p_field)):
+        ax2.scatter3D(calibration_points_p_field[j]['limit_point_x'],
+                      calibration_points_p_field[j]['limit_point_y'],
+                      calibration_points_p_field[j]['limit_point_z'],
+                      label=id_names_p_field[j])
+    plt.legend(loc='best')
+    points_x, points_y, points_z = determine_vertex_and_edges(calibration_points_p_field + 
+                                                              calibration_points_jacobian, 
+                                                              plot=False)
+
+    x_1 = np.mean(points_x[0] + points_x[1] + points_x[2] + points_x[3])
+    x_2 = np.mean(points_x[4] + points_x[5] + points_x[6] + points_x[7])
+
+    y_1 = np.mean(points_y[0] + points_y[2] + points_y[4] + points_y[6])
+    y_2 = np.mean(points_y[1] + points_y[3] + points_y[5] + points_y[7])
+
+    z_1 = np.mean(points_z[0] + points_z[1] + points_z[4] + points_z[5])
+    z_2 = np.mean(points_z[2] + points_z[3] + points_z[6] + points_z[7])
+
+    print('h', x_1 - x_2)
+    print('d', y_1 - y_2)
+    print('w', z_2 - z_1)
+
+def build_trakectory(dir_folder):
+
+    list_folders = os.listdir(dir_folder)
+    jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
+    potential_field = [folder for folder in list_folders if "potential_field" in folder]
+
+    calibration_points_p_field = []
+    calibration_points_jacobian = []
+    id_names_p_field = []
+    id_names_jacobian = []
+
+    for j, folder in enumerate(potential_field):
+        j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
+        calibration_points = dm.read_data_json(os.path.join(dir_folder, folder, j_son_file))
+        calibration_points_p_field.append(calibration_points)
+        id_names_p_field.append(folder[-16:])
+
+    for j, folder in enumerate(jacobian_results):
+        j_son_file = [file for file in os.listdir(os.path.join(dir_folder, folder)) if file.endswith('.json')][0]
+        calibration_points = dm.read_data_json(os.path.join(dir_folder, folder, j_son_file))
+        calibration_points_jacobian.append(calibration_points)
+        id_names_jacobian.append(folder[-16:])
+
+    points_x, points_y, points_z = determine_vertex_and_edges(calibration_points_p_field +
+                                                              calibration_points_jacobian,
+                                                              plot=False)
+
+    x1 = np.mean(points_x[0] + points_x[1] + points_x[2] + points_x[3])
+    x2 = np.mean(points_x[4] + points_x[5] + points_x[6] + points_x[7])
+
+    y1 = np.mean(points_y[0] + points_y[2] + points_y[4] + points_y[6])
+    y2 = np.mean(points_y[1] + points_y[3] + points_y[5] + points_y[7])
+
+    z1 = np.mean(points_z[0] + points_z[1] + points_z[4] + points_z[5])
+    z2 = np.mean(points_z[2] + points_z[3] + points_z[6] + points_z[7])
+
+
+    set_of_points = [(x1, y1, z1),
+                     (x1, y2, z1),
+                     (x1, y1, z2),
+                     (x1, y2, z2),
+                     (x2, y1, z1),
+                     (x2, y2, z1),
+                     (x2, y1, z2),
+                     (x2, y2, z2)]
+
+    x, y, z = trajectories.build_trajectory(set_of_points, 's_curve')
+
+    plt.figure()
+    plt.plot(y, z)
+
 if __name__ == '__main__':
     # plot 3_D data
     #directory_2 = os.getcwd() + '/results/n_control/straight_line/'
     #analyze_results(directory)
     #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     #plot_3D_data(directory_1)
-    directory = os.getcwd() + '/to_analyze/task_2/path_1/'
-    analyze_smoothness(directory)
+    directory = os.getcwd() + '/to_analyze/task_2/path_2/'
+    build_trakectory(directory)
+    #visualize_calibration_points(directory)
+    #analyze_smoothness(directory)
     #analyze_time(directory)
-    #plt.show()
+    plt.show()
