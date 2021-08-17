@@ -13,7 +13,7 @@ def get_centers(point_1, point_2, axis):
     return center_point
 
 
-def straight_line(length_segment, starting_point, resolution=0.1, second_point=[], angle=0):
+def straight_line(length_segment, starting_point, resolution=0.01, second_point=[], angle=0):
 
     """
     Builds the points of a straight line given the length, stargint point with a resolution of 0.1
@@ -31,9 +31,10 @@ def straight_line(length_segment, starting_point, resolution=0.1, second_point=[
     starting_point_x = starting_point[0]
     starting_point_y = starting_point[1]
     starting_point_z = starting_point[2]
-
-    y = np.linspace(starting_point_y, starting_point_y + length_segment,
-                    int((starting_point_y + length_segment) / (resolution)) + 1, endpoint=True)
+    end_point = starting_point_y - length_segment
+    number_of_points = int((np.abs(end_point - starting_point_y))/(resolution) + 1)
+    y = np.around(np.linspace(starting_point_y, starting_point_y - length_segment,
+                    number_of_points, endpoint=True), 2)
     z = np.ones(len(y)) * starting_point_z
 
     if second_point:
@@ -43,17 +44,18 @@ def straight_line(length_segment, starting_point, resolution=0.1, second_point=[
 
         m = -1 / ((starting_point_z - second_point_z) / (starting_point_y - second_point_y))
         b = (starting_point_z) - (m * (starting_point_y))
-        length_segment_s = length_segment * np.cos(m)
+        end_point = starting_point_y - length_segment
+        number_of_points = int((np.abs(end_point - starting_point_y)) / (resolution) + 1)
+        y = np.around(np.linspace(starting_point_y, starting_point_y - length_segment,
+                                  number_of_points, endpoint=True), 2)
 
-        y = np.linspace(starting_point_y, starting_point_y + length_segment_s,
-                        int((starting_point_y + length_segment_s) / (resolution)) + 1, endpoint=True)
         z = (m * y) + b
 
     x = np.ones(len(y)) * starting_point_x
     return x, y, z
 
 
-def curve(initial_point, radius, curve_angle, center_circle, resolution=0.1):
+def curve(initial_point, radius, curve_angle, center_circle, orientation='right', resolution=0.01):
 
     """
     Build a curve segment given the initial point, the radius of the curve, the curve length and
@@ -74,15 +76,23 @@ def curve(initial_point, radius, curve_angle, center_circle, resolution=0.1):
     center_circle_z = center_circle[2]
 
     length_segment = radius * np.cos((np.pi / 2) - np.deg2rad(curve_angle))
-    y = np.linspace(init_y, init_y + length_segment, int((init_y + length_segment) / (resolution)) + 1, endpoint=True)
+    end_point = init_y - length_segment
+    number_of_points = int((np.abs(end_point - init_y))/(resolution) + 1)
+    y = np.around(np.linspace(init_y, init_y - length_segment,
+                    number_of_points, endpoint=True), 2)
 
     x = np.ones(len(y)) * init_x
-    z = np.sqrt(radius ** 2 - (y - center_circle_y) ** 2) + center_circle_z
+    if orientation == 'right':
+        z = np.sqrt(radius ** 2 - (y - center_circle_y) ** 2) + center_circle_z
+
+    elif orientation == 'left':
+        center_circle_z = init_z + radius
+        z = -(np.sqrt(radius ** 2 - (y - center_circle_y) ** 2) - center_circle_z)
 
     return x, y, z
 
 
-def build_trajectory(set_of_points, trajectory_type):
+def build_trajectory(set_of_points, trajectory_type, resolution=0.1):
     """
 
     @param set_of_points: set of initial 8 points
@@ -90,16 +100,16 @@ def build_trajectory(set_of_points, trajectory_type):
     @return: a set of spatial points (x,y,z) with the any of the previously stated trajectories
     """
     # lower square
-    poitn_1 = set_of_points[0]
-    poitn_2 = set_of_points[1]
-    poitn_3 = set_of_points[2]
-    poitn_4 = set_of_points[3]
+    poitn_0 = set_of_points[0]
+    poitn_1 = set_of_points[1]
+    poitn_2 = set_of_points[2]
+    poitn_3 = set_of_points[3]
 
     # upper square
-    poitn_5 = set_of_points[4]
-    poitn_6 = set_of_points[5]
-    poitn_7 = set_of_points[6]
-    poitn_8 = set_of_points[7]
+    poitn_4 = set_of_points[4]
+    poitn_5 = set_of_points[5]
+    poitn_6 = set_of_points[6]
+    poitn_7 = set_of_points[7]
 
     center_y_1 = get_centers(poitn_1, poitn_2, 'y')
     center_y_2 = get_centers(poitn_3, poitn_4, 'y')
@@ -110,41 +120,43 @@ def build_trajectory(set_of_points, trajectory_type):
     center_x_1 = get_centers(poitn_1, poitn_3, 'x')
     center_x_2 = get_centers(poitn_2, poitn_4, 'x')
 
-    starting_point_x = np.median([poitn_1[0], poitn_3[0], poitn_5[0], poitn_7[0]])
-    starting_point_y = np.median([poitn_1[1], poitn_3[1], poitn_5[1], poitn_7[1]])
-    starting_point_z = np.median([poitn_1[2], poitn_3[2], poitn_5[2], poitn_7[2]])
+    starting_point_x = np.mean([(poitn_0[0] + poitn_4[0])/2, (poitn_2[0] + poitn_6[0])/2])
+    starting_point_y = np.mean([poitn_0[1], poitn_2[1], poitn_4[1], poitn_6[1]]) + 10
+    starting_point_z = np.mean([(poitn_0[2] + poitn_2[2])/2, (poitn_3[2] + poitn_4[2])/2])
 
     if trajectory_type == 'straight_line':
-        length_segment = 200
-        starting_point = [np.median([center_x_1, center_x_2]),
-                          starting_point_y,
-                          np.median([center_z_1, center_z_2])]
-        x, y, z = straight_line(length_segment, starting_point)
+        length_segment = 120
+        starting_point = [round(starting_point_x, 2),
+                          round(starting_point_y, 2),
+                          round(starting_point_z, 2)]
+        x, y, z = straight_line(length_segment, starting_point, resolution=0.01)
 
     if trajectory_type == 'curve_right':
         # segment 1, straight part
         length_segment_1 = 35
-        starting_point_1 = [np.median([center_x_1, center_x_2]),
-                          starting_point_y,
-                          np.median([center_z_1, center_z_2])]
+        starting_point_1 = [starting_point_x,
+                            starting_point_y,
+                            starting_point_z]
 
-        x_1, y_1, z_1 = straight_line(length_segment_1, starting_point_1, resolution=0.1)
+        x_1, y_1, z_1 = straight_line(length_segment_1, starting_point_1, resolution=0.01)
 
         # segment 2, curve
         radius = 60
-        curve_angle = 15
-        initial_point_2 = [np.median([center_x_1, center_x_2]),
+        curve_angle = 20
+        initial_point_2 = [starting_point_x,
+                           y_1[-1],
+                           starting_point_z]
+        center_circle = [starting_point_x,
                          y_1[-1],
-                         np.median([center_z_1, center_z_2])]
-        center_circle = [np.median([center_x_1, center_x_2]),
-                         y_1[-1],
-                         np.median([center_z_1, center_z_2]) - radius]
+                         starting_point_z - radius]
 
-        x_2, y_2, z_2 = curve(initial_point_2, radius, curve_angle, center_circle)
+        x_2, y_2, z_2 = curve(initial_point_2, radius, curve_angle, center_circle, resolution=0.01)
 
         # segment 3, second straight part
         starting_point_3 = [x_2[-1], y_2[-1], z_2[-1]]
-        x_3, y_3, z_3 = straight_line(180, starting_point_3, second_point=center_circle)
+        length_segment_3 = 65
+        x_3, y_3, z_3 = straight_line(length_segment_3, starting_point_3, resolution=0.01,
+                                      second_point=center_circle)
 
         # concatenate all the segments
         x = np.concatenate((x_1, x_2, x_3))
@@ -154,86 +166,87 @@ def build_trajectory(set_of_points, trajectory_type):
     if trajectory_type == 'curve_left':
         # segment 1, straight part
         length_segment_1 = 35
-        y_1 = np.linspace(starting_point_y, starting_point_y + length_segment_1,
-                          int((starting_point_y + length_segment_1) / (0.1)) + 1, endpoint=True)
-        x_1 = np.ones(len(y_1)) * np.median([center_x_1, center_x_2])
-        z_1 = np.ones(len(y_1)) * np.median([center_z_1, center_z_2])
+        starting_point_1 = [starting_point_x,
+                            starting_point_y,
+                            starting_point_z]
+
+        x_1, y_1, z_1 = straight_line(length_segment_1, starting_point_1, resolution=0.01)
 
         # segment 2, curve
         radius = 60
         curve_angle = 15
-        center_circle_z = np.median([center_z_1, center_z_2]) - radius
-        center_circle_y = y_1[-1]
-        length_segment_2 = radius * np.cos((np.pi / 2) - np.deg2rad(curve_angle))
-        y_2 = np.linspace(y_1[-1], y_1[-1] + length_segment_2, int((y_1[-1] + length_segment_2) / (0.1)) + 1,
-                          endpoint=True)
-        x_2 = np.ones(len(y_2)) * np.median([center_x_1, center_x_2])
-        z_2 = np.sqrt(radius ** 2 - (y_2 - y_1[-1]) ** 2) + center_circle_z
+        initial_point_2 = [starting_point_x,
+                           y_1[-1],
+                           starting_point_z]
+        center_circle = [starting_point_x,
+                         y_1[-1],
+                         starting_point_z + radius]
+
+        x_2, y_2, z_2 = curve(initial_point_2, radius, curve_angle, center_circle, orientation='left', resolution=0.01)
 
         # segment 3, second straight part
-        straight_lenght = 180
-        m = -1 / ((z_2[-1] - center_circle_z) / (y_2[-1] - center_circle_y))
-        b = (z_2[-1]) - (m * (y_2[-1]))
-        length_segment_3 = straight_lenght * np.cos(m)
 
-        y_3 = np.linspace(y_2[-1], y_2[-1] + length_segment_3, int((y_2[-1] + length_segment_3) / (0.1)) + 1,
-                          endpoint=True)
-        x_3 = np.ones(len(y_3)) * np.median([center_x_1, center_x_2])
-        z_3 = (m * y_3) + b
+        starting_point_3 = [x_2[-1], y_2[-1], z_2[-1]]
+        length_segment_3 = 70
+        x_3, y_3, z_3 = straight_line(length_segment_3, starting_point_3, resolution=0.01,
+                                      second_point=center_circle)
 
         x = np.concatenate((x_1, x_2, x_3))
         y = np.concatenate((y_1, y_2, y_3))
         z = np.concatenate((z_1, z_2, z_3))
-        z = -z
+        z = z
 
     if trajectory_type == 's_curve':
         # segment 1, straight part
         length_segment_1 = 10
-        y_1 = np.linspace(starting_point_y, starting_point_y + length_segment_1,
-                          int((starting_point_y + length_segment_1) / (0.1)) + 1, endpoint=True)
-        x_1 = np.ones(len(y_1)) * np.median([center_x_1, center_x_2])
-        z_1 = np.ones(len(y_1)) * np.median([center_z_1, center_z_2])
+        starting_point_1 = [starting_point_x,
+                            starting_point_y,
+                            starting_point_z]
+
+        x_1, y_1, z_1 = straight_line(length_segment_1, starting_point_1, resolution=0.01)
 
         # segment 2, curve
         radius = 15
         curve_angle = 15
-        center_circle_z = np.median([center_z_1, center_z_2]) - radius
-        center_circle_y = y_1[-1]
-        length_segment_2 = radius * np.cos((np.pi / 2) - np.deg2rad(curve_angle))
-        y_2 = np.linspace(y_1[-1], y_1[-1] + length_segment_2, int((y_1[-1] + length_segment_2) / (0.1)) + 1,
-                          endpoint=True)
-        x_2 = np.ones(len(y_2)) * np.median([center_x_1, center_x_2])
-        z_2 = np.sqrt(radius ** 2 - (y_2 - y_1[-1]) ** 2) + center_circle_z
+        initial_point_2 = [starting_point_x,
+                           y_1[-1],
+                           starting_point_z]
+        center_circle = [starting_point_x,
+                         y_1[-1],
+                         starting_point_z + radius]
+
+        x_2, y_2, z_2 = curve(initial_point_2, radius, curve_angle, center_circle,
+                              orientation='left',resolution=0.01)
 
         # segment 3, second straight part
-        straight_lenght = 10
-        m = -1 / ((z_2[-1] - center_circle_z) / (y_2[-1] - center_circle_y))
-        b = (z_2[-1]) - (m * (y_2[-1]))
-        length_segment_3 = straight_lenght * np.cos(m)
-        y_3 = np.linspace(y_2[-1], y_2[-1] + length_segment_3, int((y_2[-1] + length_segment_3) / (0.1)) + 1,
-                          endpoint=True)
-        x_3 = np.ones(len(y_3)) * np.median([center_x_1, center_x_2])
-        z_3 = (m * y_3) + b
+        starting_point_3 = [x_2[-1], y_2[-1], z_2[-1]]
+        length_segment_3 = 25
+        x_3, y_3, z_3 = straight_line(length_segment_3, starting_point_3, resolution=0.01,
+                                      second_point=center_circle)
 
+        # concatenate all the segments
+        x = np.concatenate((x_1, x_2, x_3))
+        y = np.concatenate((y_1, y_2, y_3))
+        z = np.concatenate((z_1, z_2, z_3))
         # segment 4, second curve
 
-        radius = 15
-        curve_angle = 15
-        center_circle_z = z_3[-1]
-        center_circle_y = y_3[-1]
-        length_segment_2 = radius * np.cos((np.pi / 2) - np.deg2rad(curve_angle))
-        y_4 = np.linspace(y_3[-1], y_3[-1] + length_segment_2, int((y_3[-1] + length_segment_2) /(0.1)) + 1,
-                          endpoint=True)
-        x_4 = np.ones(len(y_4)) * x_3[-1]
-        z_4 = (np.sqrt(radius ** 2 - (y_4 - y_3[-1]) ** 2) + center_circle_z) - 30.1
+        radius_2 = 15
+        curve_angle_2 = 15
+        initial_point_2 = [starting_point_x,
+                           y_3[-1],
+                           starting_point_z]
+        center_circle = [starting_point_x,
+                         y_3[-1],
+                         starting_point_z
+                         - radius_2 + 6.5]
 
-        # segment 5, final liner stage
+        x_4, y_4, z_4 = curve(initial_point_2, radius_2, curve_angle_2, center_circle,
+                              orientation='right', resolution=0.01)
 
-        length_segment_5 = 10
-        y_5 = np.linspace(y_4[-1], y_4[-1] + length_segment_5,
-                          int((y_4[-1] + length_segment_5) / (0.1)) + 1, endpoint=True)
-        x_5 = np.ones(len(y_5)) * x_4[-1]
-        z_5 = np.ones(len(y_5)) * z_4[-1]
+        # segment 5, final linear stage
+        length_segment_5 = 35
+        starting_point_5 = [x_4[-1], y_4[-1], z_4[-1]]
+        x_5, y_5, z_5 = straight_line(length_segment_5, starting_point_5, resolution=0.01)
 
         # concatenate all the segments
         x = np.concatenate((x_1, x_2, x_3, x_4, x_5))
@@ -271,5 +284,5 @@ if __name__ == '__main__':
                      (40, 1, 40),
                      (40, 40, 40)]
 
-    plot_trajectory(set_of_points, 'curve_right')
+    plot_trajectory(set_of_points, 'left_curve')
     plt.show()
