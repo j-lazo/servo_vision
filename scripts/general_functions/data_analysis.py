@@ -1498,15 +1498,19 @@ def get_center_point_sensors(dir_file):
         average_y = []
 
         for i in range(len(list)):
-            average_x.append((sensor_1_x[j][i] + sensor_2_x[j][i] + sensor_3_x[j][i])/3)
-            average_y.append((sensor_1_y[j][i] + sensor_2_y[j][i] + sensor_3_y[j][i])/3)
-            average_z.append((sensor_1_z[j][i] + sensor_2_z[j][i] + sensor_3_z[j][i])/3)
+            average_x.append(get_center_point_triangle(sensor_1_x[j][i], sensor_2_x[j][i], sensor_3_x[j][i]))
+            average_y.append(get_center_point_triangle(sensor_1_y[j][i], sensor_2_y[j][i], sensor_3_y[j][i]))
+            average_z.append(get_center_point_triangle(sensor_1_z[j][i], sensor_2_z[j][i], sensor_3_z[j][i]))
 
         points_x.append(average_x)
         points_y.append(average_y)
         points_z.append(average_z)
 
     return points_x, points_y, points_z
+
+
+def get_center_point_triangle(corner_1, corner_2, corner_3, decimal_precision=2):
+    return round(((corner_1 + corner_2 + corner_3)/3), decimal_precision)
 
 
 def get_steps_length(list_time_stamps):
@@ -1716,7 +1720,8 @@ def visualize_calibration_points(dir_folder):
     print('d', y_1 - y_2)
     print('w', z_2 - z_1)
 
-def build_trakectory(dir_folder):
+
+def build_trajectory(dir_folder, trajectory_type):
 
     list_folders = os.listdir(dir_folder)
     jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
@@ -1752,7 +1757,6 @@ def build_trakectory(dir_folder):
     z1 = np.mean(points_z[0] + points_z[1] + points_z[4] + points_z[5])
     z2 = np.mean(points_z[2] + points_z[3] + points_z[6] + points_z[7])
 
-
     set_of_points = [(x1, y1, z1),
                      (x1, y2, z1),
                      (x1, y1, z2),
@@ -1762,10 +1766,68 @@ def build_trakectory(dir_folder):
                      (x2, y1, z2),
                      (x2, y2, z2)]
 
-    x, y, z = trajectories.build_trajectory(set_of_points, 's_curve')
+    x, y, z = trajectories.build_trajectory(set_of_points, trajectory_type)
+    return x, y, z
 
-    plt.figure()
-    plt.plot(y, z)
+
+def determine_error_acrros_axis():
+    return 0
+
+def compare_trajectories(dir_folder):
+    path_id = dir_folder[-2]
+    trajectory_names = ['straight_line', 'curve_right', 'curve_left', 's_curve']
+    trajectory_type = trajectory_names[int(path_id)-1]
+    x, y, z = build_trajectory(dir_folder, trajectory_type)
+
+    param_to_analyze_2 = 'center_points'
+    experiments_jacobian = extract_data(dir_folder, "jacobian", param_to_analyze_2)
+    experiments_potential_field = extract_data(dir_folder, "potential_field", param_to_analyze_2)
+    performances_jacobian = []
+    performances_p_field = []
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(221)
+    ax2 = fig.add_subplot(222)
+    ax3 = fig.add_subplot(223)
+    #ax3 = fig.add_subplot(223)
+    #ax4 = fig.add_subplot(224)
+
+    for j, experiment_data in enumerate(experiments_jacobian):
+        center_x = experiment_data[0][0][0]
+        center_y = experiment_data[0][1][0]
+        center_z = experiment_data[0][2][0]
+        a, b = determine_correspondece_axis(y, center_y)
+        print(b)
+        ax1.plot(smooth(center_y), smooth(center_z), marker='+', label='experiment' + str(j))
+
+    for j, experiment_data in enumerate(experiments_potential_field):
+        center_x = experiment_data[0][0][0]
+        center_y = experiment_data[0][1][0]
+        center_z = experiment_data[0][2][0]
+        a, b = determine_correspondece_axis(y, center_y)
+        print(b)
+        ax2.plot(smooth(center_y), smooth(center_z), marker='+', label='experiment ' + str(j))
+        ax2.set_xlabel('y')
+
+    ax1.plot(y, z, color='darkorange', marker='*')
+    ax2.plot(y, z, color='darkorange', marker='*')
+    ax3.legend(loc='best')
+    #ax3.plot(x, y)
+    #ax4.plot(y, z)
+    #plt.legend(loc='best')
+
+
+def determine_correspondece_axis(base_signal, test_signal):
+    correspondence_list = []
+    missing_list = []
+    for x in test_signal:
+        if x in base_signal:
+            correspondence_list.append(x)
+        else:
+            missing_list.append(x)
+
+    return correspondence_list, missing_list
+
 
 if __name__ == '__main__':
     # plot 3_D data
@@ -1773,8 +1835,9 @@ if __name__ == '__main__':
     #analyze_results(directory)
     #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     #plot_3D_data(directory_1)
-    directory = os.getcwd() + '/to_analyze/task_2/path_2/'
-    build_trakectory(directory)
+    directory = os.getcwd() + '/to_analyze/task_2/path_4/'
+    compare_trajectories(directory)
+    #build_trajectory(directory)
     #visualize_calibration_points(directory)
     #analyze_smoothness(directory)
     #analyze_time(directory)
