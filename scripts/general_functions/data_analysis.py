@@ -10,6 +10,280 @@ from datetime import datetime
 import seaborn as sns
 from scipy.signal import find_peaks, peak_prominences
 import trajectories
+from sklearn.metrics import auc
+from shapely.geometry import Polygon
+import time
+from sklearn.neighbors import NearestNeighbors
+
+
+def rotation_matrix(axis, theta):
+    axis = axis/np.sqrt(np.dot(axis, axis))
+    a = np.cos(theta/2.)
+    b, c, d = -axis*np.sin(theta/2.)
+
+    return np.array([[a*a+b*b-c*c-d*d, 2*(b*c-a*d), 2*(b*d+a*c)],
+                     [2*(b*c+a*d), a*a+c*c-b*b-d*d, 2*(c*d-a*b)],
+                     [2*(b*d-a*c), 2*(c*d+a*b), a*a+d*d-b*b-c*c]])
+
+
+def test_best_fit():
+    N = 10  # number of random points in the dataset
+    num_tests = 100  # number of test iterations
+    dim = 3  # number of dimensions of the points
+    noise_sigma = .01  # standard deviation error to be added
+    translation = .1  # max translation of the test set
+    rotation = .1  # max rotation (radians) of the test set
+
+    # Generate a random dataset
+    A = np.random.rand(N, dim)
+    total_time = 0
+
+    for i in range(num_tests):
+
+        B = np.copy(A)
+        # Translate
+        t = np.random.rand(dim)*translation
+        B += t
+
+        # Rotate
+        R = rotation_matrix(np.random.rand(dim), np.random.rand()*rotation)
+        B = np.dot(R, B.T).T
+
+        # Add noise
+        B += np.random.randn(N, dim) * noise_sigma
+
+        # Find best fit transform
+        start = time.time()
+        T, R1, t1 = best_fit_transform(B, A)
+        total_time += time.time() - start
+
+        # Make C a homogeneous representation of B
+        C = np.ones((N, 4))
+        C[:,0:3] = B
+
+        # Transform C
+        C = np.dot(T, C.T).T
+
+        assert np.allclose(C[:,0:3], A, atol=6*noise_sigma) # T should transform B (or C) to A
+        assert np.allclose(-t1, t, atol=6*noise_sigma)      # t and t1 should be inverses
+        assert np.allclose(R1.T, R, atol=6*noise_sigma)     # R and R1 should be inverses
+
+    print('best fit time: {:.3}'.format(total_time/num_tests))
+
+    return
+
+def test_icp():
+
+    # https://github.com/ClayFlannigan/icp
+
+    # Constants
+    N = 10  # number of random points in the dataset
+    num_tests = 1  # 100 number of test iterations
+    dim = 3  # number of dimensions of the points
+    noise_sigma = .01  # standard deviation error to be added
+    translation = .1  # max translation of the test set
+    rotation = .1  # max rotation (radians) of the test set
+
+    # Generate a random dataset
+    A = np.random.rand(N, dim)
+    total_time = 0
+
+    for i in range(num_tests):
+
+        B = np.copy(A)
+        print(np.shape(B))
+        # Translate
+        t = np.random.rand(dim)*translation
+        B += t
+
+        # Rotate
+        R = rotation_matrix(np.random.rand(dim), np.random.rand() * rotation)
+        B = np.dot(R, B.T).T
+
+        # Add noise
+        B += np.random.randn(N, dim) * noise_sigma
+
+        # Shuffle to disrupt correspondence
+        np.random.shuffle(B)
+
+        # Run ICP
+        start = time.time()
+        T, distances, iterations = icp(B, A, tolerance=0.000001)
+        total_time += time.time() - start
+
+        # Make C a homogeneous representation of B
+        C = np.ones((N, 4))
+        C[:,0:3] = np.copy(B)
+
+        # Transform C
+        C = np.dot(T, C.T).T
+
+        assert np.mean(distances) < 6*noise_sigma                   # mean error should be small
+        assert np.allclose(T[0:3,0:3].T, R, atol=6*noise_sigma)     # T and R should be inverses
+        assert np.allclose(-T[0:3,3], t, atol=6*noise_sigma)        # T and t should be inverses
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(221, projection='3d')
+    ax2 = fig.add_subplot(222, projection='3d')
+    ax3 = fig.add_subplot(223)
+    ax4 = fig.add_subplot(224)
+
+    axs = [point[0] for point in A]
+    ays = [point[1] for point in A]
+    azs = [point[2] for point in A]
+
+    cxs = [point[0] for point in B]
+    cys = [point[1] for point in B]
+    czs = [point[2] for point in B]
+
+    ax1.scatter3D(axs, ays, azs)
+    ax2.scatter3D(cxs, cys, czs)
+
+    ax3.plot(axs, ays, '*')
+    ax3.plot(cxs, cys, 'o')
+
+    ax4.plot(axs, azs, '*')
+    ax4.plot(cxs, czs, 'o')
+
+    print('icp time: {:.3}'.format(total_time/num_tests))
+
+
+def best_fit_transform(A, B):
+    '''
+    Calculates the least-squares best-fit transform that maps corresponding points A to B in m spatial dimensions
+    Input:
+      A: Nxm numpy array of corresponding points
+      B: Nxm numpy array of corresponding points
+    Returns:
+      T: (m+1)x(m+1) homogeneous transformation matrix that maps A on to B
+      R: mxm rotation matrix
+      t: mx1 translation vector
+    '''
+
+    assert A.shape == B.shape
+
+    # get number of dimensions
+    m = A.shape[1]
+
+    # translate points to their centroids
+    centroid_A = np.mean(A, axis=0)
+    centroid_B = np.mean(B, axis=0)
+    AA = A - centroid_A
+    BB = B - centroid_B
+
+    # rotation matrix
+    H = np.dot(AA.T, BB)
+    U, S, Vt = np.linalg.svd(H)
+    R = np.dot(Vt.T, U.T)
+
+    # special reflection case
+    if np.linalg.det(R) < 0:
+       Vt[m-1,:] *= -1
+       R = np.dot(Vt.T, U.T)
+
+    # translation
+    t = centroid_B.T - np.dot(R,centroid_A.T)
+
+    # homogeneous transformation
+    T = np.identity(m+1)
+    T[:m, :m] = R
+    T[:m, m] = t
+
+    return T, R, t
+
+
+def nearest_neighbor(src, dst):
+    '''
+    Find the nearest (Euclidean) neighbor in dst for each point in src
+    Input:
+        src: Nxm array of points
+        dst: Nxm array of points
+    Output:
+        distances: Euclidean distances of the nearest neighbor
+        indices: dst indices of the nearest neighbor
+    '''
+
+    assert src.shape == dst.shape
+
+    neigh = NearestNeighbors(n_neighbors=1)
+    neigh.fit(dst)
+    distances, indices = neigh.kneighbors(src, return_distance=True)
+    return distances.ravel(), indices.ravel()
+
+
+def icp(A, B, init_pose=None, max_iterations=20, tolerance=0.001):
+    '''
+    The Iterative Closest Point method: finds best-fit transform that maps points A on to points B
+    Input:
+        A: Nxm numpy array of source mD points
+        B: Nxm numpy array of destination mD point
+        init_pose: (m+1)x(m+1) homogeneous transformation
+        max_iterations: exit algorithm after max_iterations
+        tolerance: convergence criteria
+    Output:
+        T: final homogeneous transformation that maps A on to B
+        distances: Euclidean distances (errors) of the nearest neighbor
+        i: number of iterations to converge
+    '''
+
+    assert A.shape == B.shape
+
+    # get number of dimensions
+    m = A.shape[1]
+
+    # make points homogeneous, copy them to maintain the originals
+    src = np.ones((m+1, A.shape[0]))
+    dst = np.ones((m+1, B.shape[0]))
+    src[:m, :] = np.copy(A.T)
+    dst[:m, :] = np.copy(B.T)
+
+    # apply the initial pose estimation
+    if init_pose is not None:
+        src = np.dot(init_pose, src)
+
+    prev_error = 0
+
+    for i in range(max_iterations):
+        # find the nearest neighbors between the current source and destination points
+        distances, indices = nearest_neighbor(src[:m,:].T, dst[:m,:].T)
+
+        # compute the transformation between the current source and nearest destination points
+        T,_,_ = best_fit_transform(src[:m,:].T, dst[:m,indices].T)
+
+        # update the current source
+        src = np.dot(T, src)
+
+        # check error
+        mean_error = np.mean(distances)
+        if np.abs(prev_error - mean_error) < tolerance:
+            break
+        prev_error = mean_error
+
+    # calculate final transformation
+    T,_,_ = best_fit_transform(A, src[:m,:].T)
+
+    return T, distances, i
+
+
+def caculate_AUC(curve_1, curve_2):
+    x_y_curve1 = [(0.121,0.232),(2.898,4.554),(7.865,9.987)] #these are your points for curve 1 (I just put some random numbers)
+    x_y_curve2 = [(1.221,1.232),(3.898,5.554),(8.865,7.987)] #these are your points for curve 2 (I just put some random numbers)
+
+    polygon_points = [] #creates a empty list where we will append the points to create the polygon
+
+    for xyvalue in x_y_curve1:
+        polygon_points.append([xyvalue[0], xyvalue[1]]) #append all xy points for curve 1
+
+    for xyvalue in x_y_curve2[::-1]:
+        polygon_points.append([xyvalue[0], xyvalue[1]]) #append all xy points for curve 2 in the reverse order (from last point to first point)
+
+    for xyvalue in x_y_curve1[0:1]:
+        polygon_points.append([xyvalue[0], xyvalue[1]]) #append the first point in curve 1 again, to it "closes" the polygon
+
+    polygon = Polygon(polygon_points)
+    area = polygon.area
+    print(area)
+    return area
 
 
 def smooth(a, WSZ=5):
@@ -1770,8 +2044,26 @@ def build_trajectory(dir_folder, trajectory_type):
     return x, y, z
 
 
-def determine_error_acrros_axis():
-    return 0
+def determine_error_acrros_axis(measured_points, gt_trajectory):
+
+    error_x = []
+    error_y = []
+    error_z = []
+
+    points_x = measured_points[0]
+    points_y = measured_points[1]
+    points_z = measured_points[2]
+
+    x = gt_trajectory[0]
+    y = gt_trajectory[1]
+    z = gt_trajectory[2]
+
+    for j, point in enumerate(points_z):
+        error_z.append(np.abs(point - z[list(y).index(points_y[j])]))
+        error_x.append(np.abs(points_x[j] - x[list(y).index(points_y[j])]))
+
+    return error_x, error_y, error_z
+
 
 def compare_trajectories(dir_folder):
     path_id = dir_folder[-2]
@@ -1789,29 +2081,72 @@ def compare_trajectories(dir_folder):
     ax1 = fig.add_subplot(221)
     ax2 = fig.add_subplot(222)
     ax3 = fig.add_subplot(223)
-    #ax3 = fig.add_subplot(223)
-    #ax4 = fig.add_subplot(224)
+    ax4 = fig.add_subplot(224)
+    auc_jacob = []
+    auc_p_field = []
+    max_error_jacob = []
+    max_error_p_field = []
+    mean_error_jacob = []
+    mean_error_p_field = []
 
     for j, experiment_data in enumerate(experiments_jacobian):
-        center_x = experiment_data[0][0][0]
-        center_y = experiment_data[0][1][0]
-        center_z = experiment_data[0][2][0]
-        a, b = determine_correspondece_axis(y, center_y)
-        print(b)
+        center_x = check_nan(experiment_data[0][0][0])
+        center_y = check_nan(experiment_data[0][1][0])
+        center_z = check_nan(experiment_data[0][2][0])
         ax1.plot(smooth(center_y), smooth(center_z), marker='+', label='experiment' + str(j))
+        error_x, error_y, error_z = determine_error_acrros_axis([center_x,
+                                                                 center_y,
+                                                                 center_z],
+                                                                [x, y, z])
+        auc_jacob.append(auc(np.arange(0, len(error_z), 1), error_z))
+        max_error_jacob.append(np.amax(error_z))
+        mean_error_jacob.append(np.mean(error_z))
+        ax3.plot(error_z)
 
     for j, experiment_data in enumerate(experiments_potential_field):
-        center_x = experiment_data[0][0][0]
-        center_y = experiment_data[0][1][0]
-        center_z = experiment_data[0][2][0]
-        a, b = determine_correspondece_axis(y, center_y)
-        print(b)
+        center_x = check_nan(experiment_data[0][0][0])
+        center_y = check_nan(experiment_data[0][1][0])
+        center_z = check_nan(experiment_data[0][2][0])
         ax2.plot(smooth(center_y), smooth(center_z), marker='+', label='experiment ' + str(j))
-        ax2.set_xlabel('y')
+        #a, b = determine_correspondece_axis(y, center_y)
+        error_x, error_y, error_z = determine_error_acrros_axis([center_x,
+                                                                 center_y,
+                                                                 center_z],
+                                                                [x, y, z])
+        auc_p_field.append(auc(np.arange(0, len(error_z), 1), error_z))
+        max_error_p_field.append(np.amax(error_z))
+        mean_error_p_field.append(np.mean(error_z))
+        ax4.plot(error_z)
 
     ax1.plot(y, z, color='darkorange', marker='*')
     ax2.plot(y, z, color='darkorange', marker='*')
-    ax3.legend(loc='best')
+    ax2.set_xlabel('y')
+    ax3.set_ylabel('Abs. error z')
+    ax4.set_ylabel('Abs. error z')
+
+    print(np.mean(auc_p_field), np.median(auc_p_field), np.std(auc_p_field))
+    print(np.mean(max_error_p_field), np.median(max_error_p_field), np.std(max_error_p_field))
+    print(np.mean(mean_error_p_field), np.median(mean_error_p_field), np.std(mean_error_p_field))
+
+    """print('AUC')
+    calculate_kruskal_p_value(auc_jacob, auc_p_field)
+    print(auc_jacob, auc_p_field)
+    df = pd.DataFrame(np.array([auc_jacob, auc_p_field]).T,
+                      columns=['Jacobian', 'Potential Field'])
+    sns.catplot(kind="violin", data=df).set(ylabel='AUC', title='AUC')
+
+    print('Max Error')
+    calculate_kruskal_p_value(max_error_jacob, max_error_p_field)
+    df = pd.DataFrame(np.array([max_error_jacob, max_error_p_field]).T,
+                      columns=['Jacobian', 'Potential Field'])
+    sns.catplot(kind="violin", data=df).set(ylabel='Error (mm)', title='Max Error')
+
+    print('Mean Error')
+    calculate_kruskal_p_value(mean_error_jacob, mean_error_p_field)
+    df = pd.DataFrame(np.array([mean_error_jacob, mean_error_p_field]).T,
+                      columns=['Jacobian', 'Potential Field'])
+    sns.catplot(kind="violin", data=df).set(ylabel='Error (mm)', title='Mean Error')"""
+
     #ax3.plot(x, y)
     #ax4.plot(y, z)
     #plt.legend(loc='best')
@@ -1835,10 +2170,16 @@ if __name__ == '__main__':
     #analyze_results(directory)
     #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     #plot_3D_data(directory_1)
+
     directory = os.getcwd() + '/to_analyze/task_2/path_4/'
     compare_trajectories(directory)
+
     #build_trajectory(directory)
     #visualize_calibration_points(directory)
     #analyze_smoothness(directory)
     #analyze_time(directory)
-    plt.show()
+
+    #test_best_fit()
+    #test_icp()
+
+    #plt.show()

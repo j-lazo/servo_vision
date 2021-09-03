@@ -23,8 +23,7 @@ def straight_line(length_segment, starting_point, resolution=0.01, second_point=
 
     @param starting_point: (1x3 array) 3D point (x,y,z) point from where to start to draw
     @param resolution: (float), the separation between points in the segment
-    @param m:
-    @param angle:
+    @param second_point: if there is a second point the slope and angle of the curve will be calculated
     @return:
     """
 
@@ -258,31 +257,57 @@ def build_trajectory(set_of_points, trajectory_type, resolution=0.1):
 
 def plot_trajectory(set_of_points, trajectory_type):
 
+    """
+    Function just to show the trajectory, it calls build trajectory and plot the generated points
+    @param set_of_points: set of initial 8 points of a cube
+    @param trajectory_type: straight, right_curve, left_curve, s-curve
+    @return: plot with the
+    """
+
     x, y, z = build_trajectory(set_of_points, trajectory_type)
-    ax = plt.axes(projection='3d')
-    ax.scatter3D(x, y, z)
 
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
+    fig = plt.figure()
+    ax1 = fig.add_subplot(221)
+    ax2 = fig.add_subplot(222)
+    ax3 = fig.add_subplot(223)
+    ax4 = fig.add_subplot(224, projection='3d')
 
-    plt.figure()
-    plt.subplot(121)
-    plt.plot(y, z, '-o')
-    plt.ylim(np.min(z)-100, np.max(z)+100)
-    plt.subplot(122)
-    plt.plot(y, x, '-o')
+    ax1.plot(y, z, '-o')
+    ax1.set_ylim(np.min(z)-100, np.max(z)+100)
+    ax1.title.set_text('Y vs Z')
+    ax1.set_xlabel('y')
+    ax1.set_ylabel('z')
+
+    ax2.plot(y, x, '-o')
+    ax2.title.set_text('Y vs X')
+    ax2.set_xlabel('y')
+    ax2.set_ylabel('x')
+
+    ax3.plot(z, x, '-o')
+    #ax3.title.set_text('Z vs X')
+    ax3.set_xlabel('z')
+    ax3.set_ylabel('x')
+
+    ax4.scatter3D(y, z, x)
+    ax4.title.set_text('3D View')
+    ax4.set_xlabel('Y')
+    ax4.set_ylabel('Z')
+    ax4.set_zlabel('X')
 
 
 if __name__ == '__main__':
+    # sample to show how the trajectory generator considering an initial cube of 40x40x40 mm
     set_of_points = [(1, 1, 1),
-                     (1, 40, 1),
-                     (1, 1, 40),
-                     (1, 40, 40),
-                     (40, 1, 1),
-                     (40, 40, 1),
-                     (40, 1, 40),
-                     (40, 40, 40)]
+                     (1, -40, 1),
+                     (1, 1, -40),
+                     (1, -40, -40),
+                     (-40, 1, 1),
+                     (-40, -40, 1),
+                     (-40, 1, -40),
+                     (-40, -40, -40)]
 
-    plot_trajectory(set_of_points, 'left_curve')
+    plot_trajectory(set_of_points, 'curve_right')
     plt.show()
+    #test_best_fit()
+    #test_icp()
+
