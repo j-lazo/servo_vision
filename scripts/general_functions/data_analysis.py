@@ -10,6 +10,9 @@ from datetime import datetime
 import seaborn as sns
 from scipy.signal import find_peaks, peak_prominences
 import trajectories
+import shutil
+import cv2
+
 
 
 def smooth(a, WSZ=5):
@@ -1314,6 +1317,21 @@ def extract_data(dir_folder, index_string_subfolder, atribute=''):
     return extracted_data
 
 
+def extract_data_0(dir_folder, atribute=''):
+
+    list_files = os.listdir(dir_folder)
+    file = [file for file in list_files if file.endswith('.csv')][0]
+    print(file)
+
+    if atribute == 'center_points':
+        data = get_center_point_sensors(os.path.join(dir_folder, file))
+
+    else:
+        data = pd.read_csv(os.path.join(dir_folder, file))
+
+    return data
+
+
 def dimensionless_jerk(movement, fs):
     """
     Calculates the smoothness metric for the given speed profile using the dimensionless jerk
@@ -1767,15 +1785,144 @@ def build_trakectory(dir_folder):
     plt.figure()
     plt.plot(y, z)
 
+
+def plot_single_3D_path(experiments_data, save_dir):
+    fig = plt.figure(figsize=(9, 7), dpi=80)
+    ax = fig.add_subplot(1,1,1, projection='3d')
+
+    if not (os.path.isdir(save_dir)):
+        os.mkdir(save_dir)
+
+    for j, point in enumerate(experiments_data[1][0][:20]):
+        print(j / len(experiments_data[1][0]) * 100, '%')
+        ax.scatter3D(experiments_data[1][0][:j], experiments_data[2][0][:j], experiments_data[0][0][:j], color='blue')
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_xlim(np.min(experiments_data[1][0]) - 10, np.max(experiments_data[1][0]) + 10)
+        ax.set_ylim(np.min(experiments_data[2][0]) - 20, np.max(experiments_data[2][0]) + 20)
+        ax.set_zlim(np.min(experiments_data[0][0]) - 10, np.max(experiments_data[0][0]) + 10)
+
+        plt.savefig(save_dir + str(j).zfill(4) + '.png', bbox_inches='tight')
+        ax.cla()
+
+    return
+
+
+def plot_grid_style(experiments_data, save_dir):
+    fig = plt.figure(figsize=(9, 7), dpi=80)
+    # ax = fig.add_subplot(1,1,1, projection='3d')
+
+    ax1 = fig.add_subplot(1, 2, 1, projection='3d')  # top and bottom left
+    ax2 = fig.add_subplot(2, 2, 2)  # top right
+    ax3 = fig.add_subplot(2, 2, 4)  # bottom right
+
+    if not (os.path.isdir(save_dir)):
+        os.mkdir(save_dir)
+
+    index_point = 10
+    x1 = experiments_data[0][0][index_point]
+    y1 = experiments_data[1][0][index_point]
+    z1 = experiments_data[2][0][index_point]
+
+    x2 = x1 - 20
+    y2 = y1 + 20
+    z2 = z1 + 40
+
+    set_of_points = [(x1, y1, z1),
+                     (x1, y2, z1),
+                     (x1, y1, z2),
+                     (x1, y2, z2),
+                     (x2, y1, z1),
+                     (x2, y2, z1),
+                     (x2, y1, z2),
+                     (x2, y2, z2)]
+
+    x, y, z = trajectories.build_trajectory(set_of_points, 'curve_left')
+
+    plt.figure()
+    ax1 = fig.add_subplot(1, 1, 1, projection='3d')
+    ax1.scatter3D(y, z, x, color='red')
+    ax1.scatter3D(experiments_data[1][0][:], experiments_data[2][0][:], experiments_data[0][0][:], color='blue')
+    plt.show()
+
+    for j, point in enumerate(experiments_data[1][0][:50]):
+        print(j / len(experiments_data[1][0]) * 100, '%')
+        ax1.scatter3D(experiments_data[1][0][:j], experiments_data[2][0][:j], experiments_data[0][0][:j], color='blue')
+        ax1.set_xlabel('X')
+        ax1.set_ylabel('Y')
+        ax1.set_zlabel('Z')
+        ax1.set_xlim(np.min(experiments_data[1][0]) - 10, np.max(experiments_data[1][0]) + 10)
+        ax1.set_ylim(np.min(experiments_data[2][0]) - 20, np.max(experiments_data[2][0]) + 20)
+        ax1.set_zlim(np.min(experiments_data[0][0]) - 10, np.max(experiments_data[0][0]) + 10)
+
+        ax2.plot(experiments_data[1][0][:j], experiments_data[2][0][:j], 'bo')
+        ax2.set_yticklabels('')
+        ax2.title.set_text('Top View')
+        # ax2.set_ylabel('X')
+        # ax2.set_xlabel('Y')
+        ax2.set_xlim(np.min(experiments_data[1][0]) - 10, np.max(experiments_data[1][0]) + 10)
+        ax2.set_ylim(np.min(experiments_data[2][0]) - 20, np.max(experiments_data[2][0]) + 20)
+
+        ax3.plot(experiments_data[1][0][:j], experiments_data[0][0][:j], 'bo')
+        ax3.title.set_text('Side View')
+        # ax3.set_ylabel('Z')
+        # ax3.set_xlabel('Y')
+        ax3.set_xlim(np.min(experiments_data[1][0]) - 10, np.max(experiments_data[1][0]) + 10)
+        ax3.set_ylim(np.min(experiments_data[0][0]) - 20, np.max(experiments_data[0][0]) + 20)
+
+        plt.savefig(save_dir + str(j).zfill(4) + '.png', bbox_inches='tight')
+        ax1.cla()
+        ax2.cla()
+        ax3.cla()
+
+    return
+
+
+def save_video(image_folder, parent_folder):
+
+    endoscopic_video = [file for file in os.listdir(parent_folder) if file.endswith('.avi')][0]
+    video_name = 'video_trajectory_' + endoscopic_video[:-4] + '.avi'
+    images = sorted([img for img in os.listdir(image_folder) if img.endswith(".png")])
+    print(len(images), 'frames found')
+    frame = cv2.imread(os.path.join(image_folder, images[0]))
+    height, width, layers = frame.shape
+    video_dir = ''.join([parent_folder, video_name])
+    video = cv2.VideoWriter(video_dir, cv2.VideoWriter_fourcc(*'DIVX'), 20, (width, height))
+
+    for image in images:
+        frame = cv2.imread(os.path.join(image_folder, image))
+        video.write(frame)
+
+    cv2.destroyAllWindows()
+    video.release()
+
+    # delete temp folder and files
+    shutil.rmtree(image_folder)
+
+
+def make_trajectory_video(dir_path):
+    experiments_data = extract_data_0(dir_path, 'center_points')
+    temp_dir = dir_path + 'temp/'
+    plot_grid_style(experiments_data, temp_dir)
+    #save_video(temp_dir, dir_path)
+
+
+
 if __name__ == '__main__':
     # plot 3_D data
     #directory_2 = os.getcwd() + '/results/n_control/straight_line/'
     #analyze_results(directory)
     #directory_1 = os.getcwd() + '/data/calibration/gt_trajectories/straight_line/'
     #plot_3D_data(directory_1)
-    directory = os.getcwd() + '/to_analyze/task_2/path_2/'
-    build_trakectory(directory)
+
+    directory = '/media/benoit/0803-003A/Backup_Desktop_nearlab/Jorge/current_work/' \
+                'robot_vision/to_analyze/task_2/path_2/experiment_potential_field_14_07_2021_19_14/'
+    make_trajectory_video(directory)
+
+    #build_trakectory(directory)
+
     #visualize_calibration_points(directory)
     #analyze_smoothness(directory)
     #analyze_time(directory)
-    plt.show()
+    #plt.show()
