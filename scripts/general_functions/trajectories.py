@@ -141,7 +141,7 @@ def build_trajectory(set_of_points, trajectory_type, resolution=0.1):
 
         # segment 2, curve
         radius = 60
-        curve_angle = 20
+        curve_angle = 15
         initial_point_2 = [starting_point_x,
                            y_1[-1],
                            starting_point_z]
@@ -153,7 +153,7 @@ def build_trajectory(set_of_points, trajectory_type, resolution=0.1):
 
         # segment 3, second straight part
         starting_point_3 = [x_2[-1], y_2[-1], z_2[-1]]
-        length_segment_3 = 65
+        length_segment_3 = 95
         x_3, y_3, z_3 = straight_line(length_segment_3, starting_point_3, resolution=0.01,
                                       second_point=center_circle)
 
@@ -197,19 +197,19 @@ def build_trajectory(set_of_points, trajectory_type, resolution=0.1):
 
     if trajectory_type == 's_curve':
         # segment 1, straight part
-        length_segment_1 = 15
+        length_segment_1 = 1
         starting_point_1 = [starting_point_x,
                             starting_point_y,
-                            starting_point_z - 6]
+                            starting_point_z]
 
         x_1, y_1, z_1 = straight_line(length_segment_1, starting_point_1, resolution=0.01)
 
         # segment 2, curve
         radius = 60
-        curve_angle = 30
+        curve_angle = 20
         initial_point_2 = [starting_point_x,
                            y_1[-1],
-                           starting_point_z - 6]
+                           starting_point_z]
         center_circle = [starting_point_x,
                          y_1[-1],
                          starting_point_z + radius]
@@ -219,7 +219,7 @@ def build_trajectory(set_of_points, trajectory_type, resolution=0.1):
 
         # segment 3, second straight part
         starting_point_3 = [x_2[-1], y_2[-1], z_2[-1]]
-        length_segment_3 = 2
+        length_segment_3 = 20
         x_3, y_3, z_3 = straight_line(length_segment_3, starting_point_3, resolution=0.01,
                                       second_point=center_circle)
 
@@ -230,16 +230,19 @@ def build_trajectory(set_of_points, trajectory_type, resolution=0.1):
         # segment 4, second curve
 
         radius_2 = 60
-        curve_angle_2 = 30
+        curve_angle_2 = 15
         initial_point_2 = [starting_point_x,
                            y_3[-1],
                            starting_point_z]
-        center_circle = [starting_point_x,
-                         y_3[-1]-35,
-                         starting_point_z
-                         - radius_2 + 8.5]
 
-        x_4, y_4, z_4 = curve(initial_point_2, radius_2, curve_angle_2, center_circle,
+        center_y_4 = y_3[-1] + np.cos(np.deg2rad(curve_angle_2)) - 35
+        center_z_4 = z_3[-1] + np.sin(np.deg2rad(curve_angle_2)) - radius_2 + 10
+
+        center_circle_2 = [starting_point_x,
+                         center_y_4,
+                         center_z_4]
+
+        x_4, y_4, z_4 = curve(initial_point_2, radius_2, curve_angle_2, center_circle_2,
                               orientation='right', resolution=0.005)
 
         # segment 5, final linear stage
