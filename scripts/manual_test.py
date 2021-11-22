@@ -134,14 +134,16 @@ def run_experiment(type_experiment, user_id):
             # in case a point was detected by the CV module
             if not (np.isnan(ptx)) and not (np.isnan(pty)):
                 h, w, d = np.shape(output_image)
-                # Draw circunference around the points
-                output_image = cvf.paint_image(output_image, ptx, pty, radius_center_point=10,
-                                               radius_delta_1=25, radius_delta_2=45)
-                # draw the circles
-                cv2.circle(output_image, (int(h / 2), int(w / 2)), 30,
-                           (0, 255, 0), 2)
-                # draw a rectangle in the center of the image
-                cv2.rectangle(output_image, (int(h / 2) - 3, int(w / 2) - 3), (int(h / 2) + 3, int(w / 2) + 3),
+                if type_experiment == 'visual_feedback':
+
+                    # Draw circunference around the points
+                    output_image = cvf.paint_image(output_image, ptx, pty, radius_center_point=10,
+                                                   radius_delta_1=25, radius_delta_2=45)
+                    # draw the circles
+                    cv2.circle(output_image, (int(h / 2), int(w / 2)), 30,
+                               (0, 255, 0), 2)
+                    # draw a rectangle in the center of the image
+                    cv2.rectangle(output_image, (int(h / 2) - 3, int(w / 2) - 3), (int(h / 2) + 3, int(w / 2) + 3),
                               (0, 255, 255), -1)
 
                 stop_threshold, error_values = calculate_accumulated_error(ptx, pty, (h, w), error_values)
@@ -231,16 +233,16 @@ def run_experiment(type_experiment, user_id):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser('Run Experiments')
-    controls_strategies_avialable = ['discrete_jacobian', 'naive', 'potential_field', 'update_jacobian', 'update_jacobian_potential_field']
-    parser.add_argument('--control_strategy', required=True,
-                        help='control strategy: discrete_jacobian, naive, potential_field, update_jacobian, update_jacobian_potential_field')
-    parser.add_argument('--neural_network_dir', required=False,
+    type_experiment = ['visual_feedback', 'completely_manual']
+    parser.add_argument('--type_experiment', required=True,
+                        help='visual_feedback, completely_manual')
+    parser.add_argument('--user_id', required=True,
                         metavar="str", default=os.getcwd(),
                         help='Directory where the tensorflow model to make predictions of images is saved')
 
     args = parser.parse_args()
-    if args.control_strategy in controls_strategies_avialable:
+    if args.control_strategy in type_experiment:
 
-        run_experiment(control_strategy=args.control_strategy)
+        run_experiment(type_experiment=args.type_experiment, user_id=args.user_id)
     else:
-        print('control strategy not found, please use one of the following:', controls_strategies_avialable)
+        print('control strategy not found, please use one of the following:', type_experiment)
