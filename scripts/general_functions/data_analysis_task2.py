@@ -11,6 +11,103 @@ from datetime import datetime
 from mpl_toolkits import mplot3d
 
 
+class GroundTruthSPath:
+    def __init__(self, x, x_shift=0, y_shift=0, length1=0, length2=20, radius=60, angle=20, origin=0):
+        self.length1 = length1
+        self.length2 = length2
+        self.radius = radius
+        self.angle = angle * 2 * np.pi / 360
+        self.x = x - x_shift
+        self.x_shift = x_shift
+        self.y_shift = y_shift
+
+        if x[-1] > x[0]:
+            self.__index1 = (next(i for i, v in enumerate(x) if v > x[0] + length1))
+            self.__index2 = (
+                next(i for i, v in enumerate(x) if v > (x[0] + length1 + radius * np.sin(self.angle))))
+            self.__index3 = (
+                next(i for i, v in enumerate(x) if v > (x[0] + length1 +
+                                                        radius * np.sin(self.angle) +
+                                                        length2 * np.cos(self.angle))))
+            self.__index4 = (
+                next(i for i, v in enumerate(x) if v > (x[0] + length1 +
+                                                        radius * np.sin(self.angle) +
+                                                        length2 * np.cos(self.angle) +
+                                                        radius * np.sin(self.angle))))
+        elif x[-1] < x[0]:
+            self.__index1 = (next(i for i, v in enumerate(x) if v < x[0] - length1))
+            self.__index2 = (
+                next(i for i, v in enumerate(x) if v < (x[0] - length1 - radius * np.sin(self.angle))))
+            self.__index3 = (
+                next(i for i, v in enumerate(x) if v < (x[0] - length1 -
+                                                        radius * np.sin(self.angle) -
+                                                        length2 * np.cos(self.angle))))
+            self.__index4 = (
+                next(i for i, v in enumerate(x) if v < (x[0] - length1 -
+                                                        radius * np.sin(self.angle) -
+                                                        length2 * np.cos(self.angle) -
+                                                        radius * np.sin(self.angle))))
+
+        self.x1 = np.array([])
+        self.x2 = np.array([])
+        self.x3 = np.array([])
+        self.x4 = np.array([])
+        self.x5 = np.array([])
+        self.y = np.array([])
+        self.y1 = np.array([])
+        self.y2 = np.array([])
+        self.y3 = np.array([])
+        self.y4 = np.array([])
+        self.y5 = np.array([])
+
+    def plot(self):
+        plt.plot(self.x1, self.y1, 'r')
+        plt.plot(self.x2, self.y2, 'g')
+        plt.plot(self.x3, self.y3, 'b')
+        plt.plot(self.x4, self.y4, 'r')
+        plt.plot(self.x5, self.y5, 'g')
+
+    def x_init(self):
+        self.x1 = self.x[0:self.__index1]
+        self.x2 = self.x[self.__index1:self.__index2]
+        self.x3 = self.x[self.__index2:self.__index3]
+        self.x4 = self.x[self.__index3:self.__index4]
+        self.x5 = self.x[self.__index4:]
+
+    def y_init(self, x_flip=True, y_flip=False):
+        if not x_flip and not y_flip:
+            self.y1 = self.y_shift * np.ones(len(self.x1))  # doesn't not change with x shift
+            self.y2 = np.sqrt(self.radius ** 2 - (self.x2 - self.x1[-1]) ** 2) + (-self.radius + self.y_shift)
+            self.y3 = -np.tan(self.angle) * (self.x3 - self.x2[-1]) + self.y2[-1]
+            self.y4 = np.sqrt(self.radius ** 2 - (self.x4 - self.x3[-1] - np.sin(self.angle)) ** 2) + (
+                        self.radius * np.cos(self.angle) + self.y_shift)
+            self.y5 = self.y_shift * np.ones(len(self.x5))
+
+        elif x_flip and not y_flip:
+            self.y1 = self.y_shift * np.ones(len(self.x1))  # doesn't not change with x shift
+            self.y2 = -(np.sqrt(self.radius ** 2 - (self.x2 - self.x1[-1]) ** 2) + (-self.radius + self.y_shift))
+            self.y3 = -np.tan(self.angle) * (self.x3 - self.x2[-1]) + self.y2[-1]
+            self.y4 = np.sqrt(self.radius ** 2 - (self.x4 - self.x3[-1] + self.radius * np.sin(self.angle)) ** 2) + (
+                    -self.radius * np.cos(self.angle) + self.y3[-1] + self.y_shift)
+            self.y5 = self.y4[-1] * np.ones(len(self.x5))
+
+        self.y = np.concatenate((self.y1, self.y2, self.y3, self.y4, self.y5), axis=None)
+
+    def shift_x(self, dx):
+        self.x = self.x - dx
+        self.x1 = self.x[0:self.__index1]
+        self.x2 = self.x[self.__index1:self.__index2]
+        self.x3 = self.x[self.__index2:]
+        return
+
+    def shift_y(self, dy):
+        self.y = self.y + dy
+        return
+
+    def diff(self, y):
+        return np.abs(np.subtract(y, self.y)).sum() / len(y)
+
+
 class GroundTruth:
     def __init__(self, x, x_shift=0, y_shift=0, length=40, radius=60, angle=15, origin=0):
         if x[-1] > x[0]:
@@ -57,7 +154,7 @@ class GroundTruth:
             self.y3 = np.tan(2 * np.pi / 360 * 15) * (self.x3 - self.x2[-1]) + self.y2[-1]
 
         elif not x_flip and y_flip:
-            self.y1 = -(self.y_shift * np.ones(len(self.x1))) # doesn't not change with x shift
+            self.y1 = -(self.y_shift * np.ones(len(self.x1)))  # doesn't not change with x shift
             self.y2 = -(np.sqrt(self.radius ** 2 - (self.x2 - self.x1[-1]) ** 2) + (-self.radius + self.y_shift))
             self.y3 = -(-np.tan(2 * np.pi / 360 * 15) * (self.x3 - self.x2[-1]) + self.y2[-1])
 
@@ -65,8 +162,6 @@ class GroundTruth:
             self.y1 = -(self.y_shift * np.ones(len(self.x1)))  # doesn't not change with x shift
             self.y2 = -(np.sqrt(self.radius ** 2 - (self.x2 - self.x1[-1]) ** 2) + (-self.radius + self.y_shift))
             self.y3 = -(np.tan(2 * np.pi / 360 * 15) * (self.x3 - self.x2[-1]) - self.y2[-1])
-
-
 
         self.y = np.concatenate((self.y1, self.y2, self.y3), axis=None)
 
@@ -82,8 +177,17 @@ class GroundTruth:
         return
 
     def diff(self, y):
-        return np.abs(np.subtract(y, self.y)).sum()/len(y)
+        return np.abs(np.subtract(y, self.y)).sum() / len(y)
 
+    def diff_area(self, y):
+        sum_area = 0.0
+        for i in range(len(self.x) - 1):
+            dx = self.x[i+1] - self.x[i]
+            dy0 = abs(y[i] - self.y[i])
+            dy1 = abs(y[i+1] - self.y[i+1])
+            area = (dy0 + dy1) * dx / 2
+            sum_area = sum_area + area
+        return sum_area
 
 def calculate_kruskal_p_value(parameter_data_1, parameter_data_2):
     result = stats.ttest_ind(a=parameter_data_1,
@@ -669,7 +773,6 @@ def analyze_centering_task(dir_folder):
     jacobian_results = [folder for folder in list_folders if "jacobian" in folder]
     potential_field = [folder for folder in list_folders if "potential_field" in folder]
 
-
     list_sensor_1_x_jacobian = []
     list_sensor_1_y_jacobian = []
     list_sensor_1_z_jacobian = []
@@ -814,7 +917,6 @@ def analyze_centering_task(dir_folder):
         list_sensor_3_y_jacobian.append(data['sensor 3 y'].tolist())
         list_sensor_3_z_jacobian.append(data['sensor 3 z'].tolist())
 
-
     for j, list in enumerate(list_sensor_1_x_jacobian):
         average_jx = []
         average_jz = []
@@ -907,19 +1009,16 @@ def calculate_stop_times(lists_stepper_state, offset=500):
     stop_frequency = []
     for list_state in lists_stepper_state:
         print(list_state)
-        counts = np.bincount((np.array(list_state)+offset).astype(int))
+        counts = np.bincount((np.array(list_state) + offset).astype(int))
         stop_frequency.append(len([x for x in counts if x > 5]))
     print('NUMBERS:', stop_frequency)
     return stop_frequency
 
 
 def calculate_list_stat(data):
-    average = sum(data)*1.00/len(data)
+    average = sum(data) * 1.00 / len(data)
     std = np.array(data).std()
     return average, std
-
-
-
 
 
 def analyze_navigation_task(dir_folder):
@@ -1122,15 +1221,20 @@ def analyze_navigation_task(dir_folder):
     #     ax.scatter3D(average_J_x[j][::sampling_per_number], average_J_y[j][::sampling_per_number], average_J_z[j][::sampling_per_number])
     j = 8
     print(average_J_x[j][::sampling_per_number])
-    ax.scatter3D(calibration_data_x_point_1_j[j][::sampling_per_number], calibration_data_y_point_1_j[j][::sampling_per_number],
+    ax.scatter3D(calibration_data_x_point_1_j[j][::sampling_per_number],
+                 calibration_data_y_point_1_j[j][::sampling_per_number],
                  calibration_data_z_point_1_j[j][::sampling_per_number], cmap='Reds')
-    ax.scatter3D(calibration_data_x_point_2_j[j][::sampling_per_number], calibration_data_y_point_2_j[j][::sampling_per_number],
+    ax.scatter3D(calibration_data_x_point_2_j[j][::sampling_per_number],
+                 calibration_data_y_point_2_j[j][::sampling_per_number],
                  calibration_data_z_point_2_j[j][::sampling_per_number], cmap='Reds')
-    ax.scatter3D(calibration_data_x_point_3_j[j][::sampling_per_number], calibration_data_y_point_3_j[j][::sampling_per_number],
+    ax.scatter3D(calibration_data_x_point_3_j[j][::sampling_per_number],
+                 calibration_data_y_point_3_j[j][::sampling_per_number],
                  calibration_data_z_point_3_j[j][::sampling_per_number], cmap='Reds')
-    ax.scatter3D(calibration_data_x_point_4_j[j][::sampling_per_number], calibration_data_y_point_4_j[j][::sampling_per_number],
+    ax.scatter3D(calibration_data_x_point_4_j[j][::sampling_per_number],
+                 calibration_data_y_point_4_j[j][::sampling_per_number],
                  calibration_data_z_point_4_j[j][::sampling_per_number], cmap='Reds')
-    ax.scatter3D(average_J_x[j][::sampling_per_number], average_J_y[j][::sampling_per_number], average_J_z[j][::sampling_per_number])
+    ax.scatter3D(average_J_x[j][::sampling_per_number], average_J_y[j][::sampling_per_number],
+                 average_J_z[j][::sampling_per_number])
 
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -1232,31 +1336,30 @@ def analyze_navigation_task(dir_folder):
     plt.ylim(-200, -50)
     plt.savefig('C:\\Users\\cflai\\Documents\\TROspecial\\result_figure\\' + 'test.png', transparent=True)
 
-
-    print(average_J_y[j][::sampling_per_number])
-    gt = GroundTruth(np.array(average_J_y[j][::sampling_per_number]), length=20)
+    i = 9
+    gt = GroundTruth(np.array(average_J_y[i][::sampling_per_number]), length=35)
+    # gt = GroundTruthSPath(np.array(average_J_y[i][::sampling_per_number]), length1=1)
     gt.x_init()
-    gt.y_init(x_flip=True, y_flip=False)
-    gt.shift_y(dy=-108.72) # path 2
-    # gt.shift_y(dy=-139) # path 3
-    plt.figure(6, figsize=(7, 7), frameon=False)
+    gt.y_init(x_flip=True, y_flip=False)  # path 2
+    # gt.y_init(x_flip=True, y_flip=True)  # path 3
+    # gt.y_init(x_flip=True, y_flip=False)  # path 4
+    gt.shift_y(dy=-108.72)  # path 2
+    # gt.shift_y(dy=-139)  # path 3
+    # gt.shift_y(dy=-102.5)  # path 4
+    print("AUC:", gt.diff_area(average_J_z[i][::sampling_per_number]))
+    plt.figure(i + 7, figsize=(7, 7), frameon=False)
     plt.subplot(111)
-    plt.plot(average_J_y[j][::sampling_per_number], average_J_z[j][::sampling_per_number], 'yx')
-    plt.plot(average_J_y[j][::sampling_per_number], gt.y, 'ro')
-    print('error:', gt.diff(average_J_z[j][::sampling_per_number]))
-    plt.fill_between(average_J_y[j][::sampling_per_number],
-                     average_J_z[j][::sampling_per_number],
+    plt.plot(average_J_y[i][::sampling_per_number], average_J_z[i][::sampling_per_number], 'yx')
+    plt.plot(average_J_y[i][::sampling_per_number], gt.y, 'ro')
+    plt.fill_between(average_J_y[i][::sampling_per_number],
+                     average_J_z[i][::sampling_per_number],
                      gt.y,
                      alpha=0.5)
-    print("calix", calibration_points["limit_point_x"], "caliy", calibration_points["limit_point_y"])
 
-    print(np.concatenate((gt.y1, gt.y2, gt.y3)).tolist())
     # plt.xlim(-25, 125)
     # plt.ylim(-200, -50)
 
-
-
-    #Finish time session:
+    # Finish time session:
     list_time_delta_jacobian = mapping_time(list_time_jacobian)
     list_time_delta_potential = mapping_time(list_time_potential)
     finish_time_jacobian = find_finish_time(list_time_delta_jacobian)
@@ -1269,6 +1372,8 @@ def analyze_navigation_task(dir_folder):
     calculate_kruskal_p_value(finish_time_jacobian, finish_time_potential)
 
     return
+
+
 # end of analyze_navigation_task
 
 def analyze_navigation_task_stop_frequency(dir_folder):
