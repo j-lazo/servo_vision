@@ -98,7 +98,6 @@ def run_experiment(type_experiment, user_id):
 
     error_values = []
     counter = 0
-    print('Please input 6 points for each corner of the trajectory to follow')
     # Run the experiment
     while cap.isOpened():
         # read a key from the keyboard
@@ -107,7 +106,7 @@ def run_experiment(type_experiment, user_id):
         ret, frame = cap.read()
         counter += 1
 
-        if ret is True and counter > 10 and len(limit_points_x) >= 48:
+        if ret is True and counter:
             # initialize the time counter of the cycle
             init_time_epoch = datetime.datetime.now()
             time_line.append(datetime.datetime.now())
@@ -241,8 +240,8 @@ if __name__ == "__main__":
                         help='Directory where the tensorflow model to make predictions of images is saved')
 
     args = parser.parse_args()
-    if args.control_strategy in type_experiment:
-
+    if args.type_experiment in type_experiment:
+        print('run experiment')
         run_experiment(type_experiment=args.type_experiment, user_id=args.user_id)
     else:
         print('control strategy not found, please use one of the following:', type_experiment)
