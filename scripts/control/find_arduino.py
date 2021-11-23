@@ -26,7 +26,9 @@ def find_arduino():
     elif os_name == 'Linux':
         ports = list(port_list.comports())
         # PID of the arduino we are using
-        ports = [p for p in ports if p.pid == 29987]
+        for p in ports:
+            test = p.pid
+        ports = [p for p in ports if p.pid == test]
 
         if not ports:
             raise IOError("No Arduino found")
