@@ -70,7 +70,7 @@ def save_colletec_data(data_vector, results_folder, date_experiment):
     with open(name_test_csv_file, mode='w') as results_file:
 
         results_file_writer = csv.writer(results_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        results_file_writer.writerow(['time', 'img name',
+        results_file_writer.writerow(['time', 'image name',
                                       'vis point x', 'vis point y',
                                       'filtered x', 'filtered y',
                                       'upper q',
