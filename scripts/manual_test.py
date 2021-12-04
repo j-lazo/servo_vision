@@ -183,15 +183,16 @@ def run_experiment(type_experiment, user_id):
             print('down')
         # (down arrow) move down
             mc.serial_actuate(0, -defined_speed, z, arduino_port_1)
-
-        #elif key == ord('f'):
-        #    print('forward')
-        #    z = z + 1
-        #    mc.serial_actuate(0, 0, z, arduino_port_1)
-        #elif key == ord('b'):
-        #    print('backwards')
-        #    z = z - 1
-        #    mc.serial_actuate(0, 0, z, arduino_port_1)
+        # (f) move forward
+        elif key == ord('f'):
+            print('forward')
+            z = z + 1
+            mc.serial_actuate(0, 0, z, arduino_port_1)
+        # (b) move backward
+        elif key == ord('b'):
+            print('backwards')
+            z = z - 1
+            mc.serial_actuate(0, 0, z, arduino_port_1)
         # (s) stop movement
         elif key == ord('s'):
             print('stop')
@@ -202,7 +203,7 @@ def run_experiment(type_experiment, user_id):
         # mc.serial_actuate(0, 0, z, arduino_port_1)
         prev_key = key
         # (q) quit program. Finish experiment
-        if key == ord('q') or acumulated_error < stop_threshold:
+        if key == ord('q'):
             stop_z = mc.serial_request(arduino_port_1)[2] / 800
             mc.serial_actuate(0, 0, 0, arduino_port_1)
             break
