@@ -40,19 +40,21 @@ def run_experiment(distance, angle, user_id):
     date_experiment = datetime.datetime.now()
 
     # Define the results saving directory
-    results_folder = ''.join([os.getcwd(), '/results/experiment_', str(distance), '_', str(angle), '_'
-                              'usr_', user_id, '_', date_experiment.strftime("%d_%m_%Y_%H_%M"), '/'])
+    results_folder = ''.join([os.getcwd(), '/results/experiment_dist_', str(distance), '_angle_', str(angle),
+                              '_', user_id, '_', date_experiment.strftime("%d_%m_%Y_%H_%M"), '/'])
 
-    # If the folder doesn't exists create the folder
     if not os.path.isdir(results_folder):
         os.mkdir(results_folder)
-        os.mkdir(os.path.join(results_folder, 'collected_images'))
-        os.mkdir(os.path.join(results_folder, 'collected_images', 'images'))
-        os.mkdir(os.path.join(results_folder, 'collected_images', 'masks'))
+
+    os.mkdir(os.path.join(results_folder, 'collcted_images'))
+    dir_imgs = os.path.join(results_folder, 'collcted_images', 'images')
+    dir_masks = os.path.join(results_folder, 'collcted_images', 'masks')
+    os.mkdir(dir_imgs)
+    os.mkdir(dir_masks)
 
     # Define the name of the video to save
-    name_video = results_folder + 'experiment_lumen_output_video' + str(distance), '_', str(angle) + '_' + \
-                 'usr_' + user_id + '_' + date_experiment.strftime("%d_%m_%Y_%H_%M")
+    name_video = results_folder + 'experiment_lumen_output_video' + str(distance) + '_angle_' + str(angle) + '_' + \
+                 user_id + '_' + date_experiment.strftime("%d_%m_%Y_%H_%M")
 
     # Define the format of the video and size of the frames
     out = cv2.VideoWriter(name_video + '_.avi', fourcc, 20.0, (300, 300))
@@ -93,6 +95,7 @@ def run_experiment(distance, angle, user_id):
     limit_points_z = []
     # time
     time_line = []
+    images_names = []
     # values from the motors encoders
     joint_variable_values = []
 
@@ -101,7 +104,6 @@ def run_experiment(distance, angle, user_id):
 
     error_values = []
     counter = 0
-    print('Please input 6 points for each corner of the trajectory to follow')
     # Run the experiment
     while cap.isOpened():
         # read a key from the keyboard
@@ -110,15 +112,16 @@ def run_experiment(distance, angle, user_id):
         ret, frame = cap.read()
         counter += 1
 
-        if ret is True and counter > 10 and len(limit_points_x) >= 48:
+        if ret is True and counter:
             # initialize the time counter of the cycle
             init_time_epoch = datetime.datetime.now()
+            image_id = ''.join(['img_', str(counter).zfill(5), '_', user_id, '_.png'])
             time_line.append(datetime.datetime.now())
             #if input_size != 3:
             #else:
 
             # detected points by the nn
-            output_image, point_x, point_y = cm.detect_lumen(model, frame)
+            output_image, mask, point_x, point_y = cm.detect_lumen_2(model, frame)
             # save detected points
             center_points_x.append(point_x)
             center_points_y.append(point_y)
@@ -137,17 +140,16 @@ def run_experiment(distance, angle, user_id):
             # in case a point was detected by the CV module
             if not (np.isnan(ptx)) and not (np.isnan(pty)):
                 h, w, d = np.shape(output_image)
-                if type_experiment == 'visual_feedback':
 
-                    # Draw circunference around the points
-                    output_image = cvf.paint_image(output_image, ptx, pty, radius_center_point=10,
-                                                   radius_delta_1=25, radius_delta_2=45)
-                    # draw the circles
-                    cv2.circle(output_image, (int(h / 2), int(w / 2)), 30,
-                               (0, 255, 0), 2)
-                    # draw a rectangle in the center of the image
-                    cv2.rectangle(output_image, (int(h / 2) - 3, int(w / 2) - 3), (int(h / 2) + 3, int(w / 2) + 3),
-                              (0, 255, 255), -1)
+                # Draw circunference around the points
+                output_image = cvf.paint_image(output_image, ptx, pty, radius_center_point=10,
+                                               radius_delta_1=25, radius_delta_2=45)
+                # draw the circles
+                cv2.circle(output_image, (int(h / 2), int(w / 2)), 30,
+                           (0, 255, 0), 2)
+                # draw a rectangle in the center of the image
+                cv2.rectangle(output_image, (int(h / 2) - 3, int(w / 2) - 3), (int(h / 2) + 3, int(w / 2) + 3),
+                          (0, 255, 255), -1)
 
                 stop_threshold, error_values = calculate_accumulated_error(ptx, pty, (h, w), error_values)
             # In case no point detected keep and record previous values
@@ -156,9 +158,12 @@ def run_experiment(distance, angle, user_id):
                 mc.serial_actuate(0, 0, current_act_z, arduino_port_1)
             # show video
             cv2.imshow('video', output_image)
+            image_name = ''.join([dir_imgs, '/', image_id])
+            mask_name = ''.join([dir_masks, '/', image_id])
+            cv2.imwrite(image_name, output_image)
+            cv2.imwrite(mask_name, mask)
             # save video
             out.write(output_image)
-
 
         # keys for the user
         # (+) increase speed
@@ -188,14 +193,15 @@ def run_experiment(distance, angle, user_id):
         # (down arrow) move down
             mc.serial_actuate(0, -defined_speed, z, arduino_port_1)
 
-        #elif key == ord('f'):
-        #    print('forward')
-        #    z = z + 1
-        #    mc.serial_actuate(0, 0, z, arduino_port_1)
-        #elif key == ord('b'):
-        #    print('backwards')
-        #    z = z - 1
-        #    mc.serial_actuate(0, 0, z, arduino_port_1)
+        elif key == ord('f'):
+            print('forward')
+            z = z + 1
+            mc.serial_actuate(0, 0, z, arduino_port_1)
+        elif key == ord('b'):
+            print('backwards')
+            z = z - 1
+            mc.serial_actuate(0, 0, z, arduino_port_1)
+
         # (s) stop movement
         elif key == ord('s'):
             print('stop')
@@ -206,20 +212,20 @@ def run_experiment(distance, angle, user_id):
         # mc.serial_actuate(0, 0, z, arduino_port_1)
         prev_key = key
         # (q) quit program. Finish experiment
-        if key == ord('q'): # or acumulated_error < stop_threshold:
+        if key == ord('q') or acumulated_error < stop_threshold:
             stop_z = mc.serial_request(arduino_port_1)[2] / 800
             mc.serial_actuate(0, 0, 0, arduino_port_1)
             break
 
     # arrange all the saved data in an array
     data_vector = [time_line,
+                   images_names,
                    center_points_x,
                    center_points_y,
                    filtered_points_x,
                    filtered_points_y,
                    joint_variable_values,
                    ]
-
 
     # stop the robot
     mc.serial_actuate(0, 0, initial_z, arduino_port_1)
