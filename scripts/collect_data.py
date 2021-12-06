@@ -161,7 +161,7 @@ def run_experiment(distance, angle, user_id):
             image_name = ''.join([dir_imgs, '/', image_id])
             mask_name = ''.join([dir_masks, '/', image_id])
             cv2.imwrite(image_name, output_image)
-            cv2.imwrite(mask_name, mask)
+            cv2.imwrite(mask_name, mask*255)
             # save video
             out.write(output_image)
 
