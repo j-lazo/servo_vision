@@ -61,6 +61,7 @@ def save_data_manual_test(data_vector, results_folder, date_experiment):
 
     print('Saved at:', name_test_csv_file)
 
+
 def save_colletec_data(data_vector, results_folder, date_experiment):
     if not os.path.isdir(results_folder):
         os.mkdir(results_folder)

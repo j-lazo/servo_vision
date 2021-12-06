@@ -230,7 +230,7 @@ def run_experiment(distance, angle, user_id):
     # stop the robot
     mc.serial_actuate(0, 0, initial_z, arduino_port_1)
     # save the data measurements in a CSV
-    dm.save_data_manual_test(data_vector, results_folder, date_experiment)
+    dm.save_colletec_data(data_vector, results_folder, date_experiment)
 
     # release cam and stop recording video
     out.release()
