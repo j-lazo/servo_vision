@@ -65,7 +65,7 @@ def detect_lumen_2(model, innput_frame, output_size=(300, 300)):
     # apply blur to the image and normalize the image
     resized = (cv2.blur(reshaped_img, (7, 7)))/255
     # make a prediction of the mask
-    mask = cvf.predict_mask(model, resized)
+    mask = cvf.predict_mask(model, resized) >= 0.5
     # resize the image for a size to show to the user
     output_imgage = cv2.resize(reshaped_img, output_size, interpolation=cv2.INTER_AREA)
     w, h, d = np.shape(output_imgage)
