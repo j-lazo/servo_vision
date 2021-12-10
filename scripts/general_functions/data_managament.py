@@ -79,7 +79,8 @@ def save_colletec_data(data_vector, results_folder, date_experiment):
                                       'stepper'
                                       ])
 
-        for i in range(np.shape(data_vector)[1]):
+    
+        for i in range(np.shape(data_vector[0])[0]):
 
             results_file_writer.writerow([data_vector[0][i],
                                           data_vector[1][i],
